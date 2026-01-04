@@ -1,0 +1,17 @@
+name: Go Report Card Refresh
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update_report_card:
+    name: Update Go Report Card
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Update Go Report Card
+        uses: creekorful/goreportcard-action@v1.0
