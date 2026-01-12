@@ -13,15 +13,15 @@ var versionFlag bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "mmsync",
+	Use:   "mns",
 	Short: "A CLI tool that lets you add folders to backup manually to a target Git repository.",
 
-	Long: `mnemosync is a CLI tool that lets you add folders to backup manually to a target Git repository.
+	Long: `mns - short for mnemosync.
+
+mnemosync is a CLI tool that lets you add folders to backup manually to a target Git repository.
 The name is inspired by the Greek Goddess of memory Mnemosyne.
 
 This application assumes that you know how to create and set up a Git repository.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionFlag {
 			schema_ver := appConf.ConfigSchema.AppVersion
