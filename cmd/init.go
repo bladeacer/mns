@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mmsync/pkg/fileio"
 	"github.com/peterh/liner"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 // Global variable to hold the path passed via flag
@@ -66,7 +66,7 @@ var initCmd = &cobra.Command{
 
 		if exists {
 			fmt.Printf("\nRepository path validated: '%s/.git' exists.\n", finalRepoPath)
-			writeYAML(defaultConfig, configPath)
+			fileio.WriteYAML(defaultConfig, configPath)
 			config.GetDataStore().SaveData(dbPath)
 			fmt.Printf("\nDatabase created at: '%s'.\n", dbPath)
 		} else {
@@ -216,27 +216,4 @@ func getRepoPathInteractive() (string, error) {
 		fmt.Printf("Path accepted: %s\n", finalRepoPath)
 		return finalRepoPath, nil
 	}
-}
-
-func writeYAML(defaultConfig *config.MnemoConf, configPath string) {
-	data, err := yaml.Marshal(defaultConfig)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error creating default config:", err)
-		return
-	}
-
-	dir := filepath.Dir(configPath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			fmt.Fprintln(os.Stderr, "Error creating config directory:", err)
-			return
-		}
-	}
-
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
-		fmt.Fprintln(os.Stderr, "Error writing config file:", err)
-		return
-	}
-
-	fmt.Printf("Initialized default configuration file at %s\n", configPath)
 }
