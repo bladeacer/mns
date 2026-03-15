@@ -2,7 +2,7 @@
 ![GitHub License](https://img.shields.io/github/license/bladeacer/mnemosync?style=for-the-badge)
 [![Go Report Card](https://goreportcard.com/badge/github.com/bladeacer/mmsync)](https://goreportcard.com/report/github.com/bladeacer/mmsync)
 
-# mmsync
+# mns
 
 Short for mnemosync. A CLI tool that lets you add folders to backup manually to
 a target Git repository.
@@ -22,10 +22,11 @@ go install github.com/bladeacer/mmsync@latest
 Ensure that you can access Go binaries in your $PATH.
 
 ```bash
-mmsync
+mns
 ```
 
 ## Project status
+
 WIP. See [this GitHub project](https://github.com/users/bladeacer/projects/3) for
 the progress tracker.
 
@@ -33,18 +34,26 @@ This is my first project using the Go programming language, but I hope it will
 be useful.
 
 ## Planned features
+
 - Check if required binaries are available before calling the tool
   - Required binaries: `git, rsync, tar, zip`
 
 - Help command line flag
-___
+
 - CRUD target directories which user wishes to backup e.g.
 
-- Rsync to mirror said target directories to a `~/.mnemosync/folders`
+- `rsync` to mirror said target directories to a `~/.mnemosync/folders`
   - Either manually triggered or we integrate `cron`
 - Wrapper for user to manually copy the files and push them in their Git repository
 
 - Wrapper to let user set default commit message format
+
+## LLM Usage Disclosure
+
+As this is my first project using Golang, I initially used some AI assistance for
+syntax, with the larger commits in the earlier iterations of the codebase.
+
+These days, I have been trying to avoid relying on LLMs too much.
 
 ## License
 
@@ -81,94 +90,105 @@ This CLI was made possible by [Cobra CLI](https://github.com/spf13/cobra).
 
 ## Planned CLI spec
 
-TBC. View currently available options by running mnemosync without any flags or arguments.
+View currently available options by running mnemosync without any flags or arguments.
 
-There is also `mmsync man` for a generated manual page.
+There is also `mns man` for a generated manual page.
 
-```bash
-## Init and config
-# Init the app with helpers to get the user to set path config and all
-mmsync init 
-mmsync config
-mmsync config open
-# Prints to stdout
-mmsync repo get
+| Command | What it does | Implementation Status |
+| --- | --- | --- |
+| `mns` | Main help text to stdout. | Done |
+| `mns init` | Initialise a new configuration file with default values. | Done |
+| `mns config` | Manage configuration file. | WIP |
+| `mns completion` | Generate autocompletion script for target shell (Cobra CLI builtin)  | Done |
+| `mns health` | Check Health and installation of dependencies (optional or not) | Done |
+| `mns help` | Get help text for specific command (Status depends on target command) | WIP |
+| `mns man` | Generates the manual page and displays with less | WIP |
+| `mns add` | Add target file/folder with target with alias support. | WIP |
 
-## CRUD directories to mmsync before staging
-# Save this in the local viewable db somehow each time the binary is called.
-mmsync add <target_path> -a <optional_alias>
-mmsync list
-mmsync change <target_path-or-alias> <new-target_path-or-alias>
-mmsync rm <target_path-or-alias>
+<!-- ```bash -->
+<!-- ## Init and config -->
+<!-- # Init the app with helpers to get the user to set path config and all -->
+<!-- mmsync init --> 
+<!-- mmsync config -->
+<!-- mmsync config open -->
+<!-- # Prints to stdout -->
+<!-- mmsync repo get -->
 
-## Find a mmsync path or alias that has been added
-mmsync search <query-by-path-or-alias>
+<!-- ## CRUD directories to mmsync before staging -->
+<!-- # Save this in the local viewable db somehow each time the binary is called. -->
+<!-- mmsync add <target_path> -a <optional_alias> -->
+<!-- mmsync list -->
+<!-- mmsync change <target_path-or-alias> <new-target_path-or-alias> -->
+<!-- mmsync rm <target_path-or-alias> -->
 
-## Add warning for user to confirm if they wish to delete all directories they added
-mmsync clear
+<!-- ## Find a mmsync path or alias that has been added -->
+<!-- mmsync search <query-by-path-or-alias> -->
 
-# Backup related
-## Technical info: staging is just rsyncing over to the target repo
-## You can use . to include all directories and aliases
+<!-- ## Add warning for user to confirm if they wish to delete all directories they added -->
+<!-- mmsync clear -->
 
-# rsyncs all added target mmsync directories or aliases to staging, and then
-# calls git add in the target repo
-mmsync stage <target_path-or-alias> 
+<!-- # Backup related -->
+<!-- ## Technical info: staging is just rsyncing over to the target repo -->
+<!-- ## You can use . to include all directories and aliases -->
 
-# rsyncs unstages added target mmsync directories or aliases to staging 
-# git restore --staged <target_path-or-alias> in the target repo
-# somehow map aliases to directory names
-mmsync unstage <target_path-or-alias> 
+<!-- # rsyncs all added target mmsync directories or aliases to staging, and then -->
+<!-- # calls git add in the target repo -->
+<!-- mmsync stage <target_path-or-alias> --> 
 
-# get status of staging
-# git status in the target repo
-mmsync status
+<!-- # rsyncs unstages added target mmsync directories or aliases to staging --> 
+<!-- # git restore --staged <target_path-or-alias> in the target repo -->
+<!-- # somehow map aliases to directory names -->
+<!-- mmsync unstage <target_path-or-alias> --> 
 
-# get staging history 
-# git log --oneline target repo
-mmsync log
+<!-- # get status of staging -->
+<!-- # git status in the target repo -->
+<!-- mmsync status -->
 
-## get staging history limit in days before it is cleared. Defaults to 7 days
-## and a max of 1024 MB. Limitation only enforced when the binary is called
+<!-- # get staging history --> 
+<!-- # git log --oneline target repo -->
+<!-- mmsync log -->
 
-## Need to read last modified time of each rsync mirrored directory or save its
-## last modified time each time an operation is done on it.
-## with confirmation message
+<!-- ## get staging history limit in days before it is cleared. Defaults to 7 days -->
+<!-- ## and a max of 1024 MB. Limitation only enforced when the binary is called -->
 
-mmsync get-hist-limit 
-mmsync set-hist-limit -d <number_of_days> -s <max_size_in_mb>
+<!-- ## Need to read last modified time of each rsync mirrored directory or save its -->
+<!-- ## last modified time each time an operation is done on it. -->
+<!-- ## with confirmation message -->
 
-# calls git restore --staged . and git restore . in the target repo
-# with confirmation message
-mmsync clear-hist # clears staging history
+<!-- mmsync get-hist-limit --> 
+<!-- mmsync set-hist-limit -d <number_of_days> -s <max_size_in_mb> -->
 
-# set archive options
-# write this option in the config file somehow
-mmsync set-archiver tar|zip
-mmsync get-archiver # gets archive tool used, defaults to tar
+<!-- # calls git restore --staged . and git restore . in the target repo -->
+<!-- # with confirmation message -->
+<!-- mmsync clear-hist # clears staging history -->
 
-# Git related
+<!-- # set archive options -->
+<!-- # write this option in the config file somehow -->
+<!-- mmsync set-archiver tar|zip -->
+<!-- mmsync get-archiver # gets archive tool used, defaults to tar -->
 
-## Configure commit messages
-mmsync get-commit-fmt # Defaults to mnemosync archive ISO timestamp
-mmsync set-commit-fmt <custom_format>
+<!-- # Git related -->
 
-## checks if anything in staging, if yes it compresses writes the archive file
-## over to be pushed
-## if not, warns the user that staging is empty or files are not staged yet
-## When pushing, write folder and filenames affected to viewable local db as
-## part of staging history
-## Also does the needed git commit and push on behalf of the user.
-mmsync push 
+<!-- ## Configure commit messages -->
+<!-- mmsync get-commit-fmt # Defaults to mnemosync archive ISO timestamp -->
+<!-- mmsync set-commit-fmt <custom_format> -->
 
-## Respecting .gitignore
-## mmsync respects gitignore in the target repo when adding directories or aliases
-## Returns true or 1 by default
-## When setting to 0, warning + confirmation
-mmsync get-ignore 
-mmsync set-ignore 0|1
+<!-- ## checks if anything in staging, if yes it compresses writes the archive file -->
+<!-- ## over to be pushed -->
+<!-- ## if not, warns the user that staging is empty or files are not staged yet -->
+<!-- ## When pushing, write folder and filenames affected to viewable local db as -->
+<!-- ## part of staging history -->
+<!-- ## Also does the needed git commit and push on behalf of the user. -->
+<!-- mmsync push --> 
 
-# Misc
-mmsync version
-mmsync help
-```
+<!-- ## Respecting .gitignore -->
+<!-- ## mmsync respects gitignore in the target repo when adding directories or aliases -->
+<!-- ## Returns true or 1 by default -->
+<!-- ## When setting to 0, warning + confirmation -->
+<!-- mmsync get-ignore --> 
+<!-- mmsync set-ignore 0|1 -->
+
+<!-- # Misc -->
+<!-- mmsync version -->
+<!-- mmsync help -->
+<!-- ``` -->
