@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/bladeacer/mmsync/config"
+	// "github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mmsync/internal/fileio"
 	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
@@ -13,7 +14,7 @@ var configCmd = &cobra.Command{
 	Short: "Manage the mnemosync configuration file",
 	Long:  "Provides commands to manage the application's configuration file.\nSet the configuration path either with $MMSYNC_CONF environment variable in your shell configuration file e.g. bashrc or with mmsync init.\nConfiguration directory should only be under your home directory.\nRestart your shell when changing or clearing the environment variable.",
 	Run: func(cmd *cobra.Command, args []string) {
-		configPath := config.ResolveConfigPath()
+		configPath := fileio.ResolveConfigPath()
 		isInit := appConf.ConfigSchema.IsInit
 
 		if !isInit {
@@ -29,7 +30,7 @@ var getCmd = &cobra.Command{
 	Short: "Prints the current configuration to stdout",
 	Long:  "Prints the content of the mnemosync configuration file to the standard output. If the file doesn't exist, it prints a message.",
 	Run: func(cmd *cobra.Command, args []string) {
-		configPath := config.ResolveConfigPath()
+		configPath := fileio.ResolveConfigPath()
 		isInit := appConf.ConfigSchema.IsInit
 
 		if !isInit {
@@ -52,7 +53,7 @@ var openCmd = &cobra.Command{
 	Use:   "open",
 	Short: "Opens the configuration file with the user's $EDITOR",
 	Run: func(cmd *cobra.Command, args []string) {
-		configPath := config.ResolveConfigPath()
+		configPath := fileio.ResolveConfigPath()
 		isInit := appConf.ConfigSchema.IsInit
 		editor := os.Getenv("EDITOR")
 

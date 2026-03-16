@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+
+	"github.com/bladeacer/mmsync/internal/fileio"
 )
 
 type DirData struct {
@@ -24,7 +26,7 @@ func GetDataStore() *DataStore {
 	}
 }
 func LoadDataStore() (*DataStore, error) {
-	dbPath := ResolveDbPath()
+	dbPath := fileio.ResolveDbPath()
 
 	defaultDS := GetDataStore()
 

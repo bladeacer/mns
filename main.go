@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/bladeacer/mmsync/cmd"
 	"github.com/bladeacer/mmsync/config"
-	"os"
+	"github.com/bladeacer/mmsync/internal/confighandler"
 )
 
 func main() {
@@ -16,7 +18,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	appConfig, err := config.LoadConfig()
+	appConfig, err := confighandler.LoadConfig()
 	dataStore, err2 := config.LoadDataStore()
 
 	if err != nil {

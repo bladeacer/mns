@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/bladeacer/mmsync/config"
-	"github.com/bladeacer/mmsync/pkg/fileio"
+	"github.com/bladeacer/mmsync/internal/fileio"
+	"github.com/bladeacer/mmsync/internal/healthcheck"
+	"github.com/bladeacer/mmsync/internal/yaml"
 	"github.com/peterh/liner"
 	"github.com/spf13/cobra"
 )
@@ -20,8 +22,8 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initializes a new configuration file with default values.",
 	Run: func(cmd *cobra.Command, args []string) {
-		configPath := config.ResolveConfigPath()
-		dbPath := config.ResolveDbPath()
+		configPath := fileio.ResolveConfigPath()
+		dbPath := fileio.ResolveDbPath()
 		_, confErr := os.Stat(configPath)
 		_, dbErr := os.Stat(dbPath)
 
@@ -62,11 +64,11 @@ var initCmd = &cobra.Command{
 		defaultConfig.ConfigSchema.IsInit = true
 		defaultConfig.ConfigSchema.RepoPath = finalRepoPath
 
-		exists, _ := config.GitDirExists(finalRepoPath)
+		exists, _ := healthcheck.GitDirExists(finalRepoPath)
 
 		if exists {
 			fmt.Printf("\nRepository path validated: '%s/.git' exists.\n", finalRepoPath)
-			fileio.WriteYAML(defaultConfig, configPath)
+			yaml.WriteYAML(defaultConfig, configPath)
 			config.GetDataStore().SaveData(dbPath)
 			fmt.Printf("\nDatabase created at: '%s'.\n", dbPath)
 		} else {

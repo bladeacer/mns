@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mmsync/internal/fileio"
 	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
@@ -20,7 +20,7 @@ var repoGetCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check if the config is initialized
 		if appConf == nil || !appConf.ConfigSchema.IsInit {
-			configPath := config.ResolveConfigPath()
+			configPath := fileio.ResolveConfigPath()
 			fmt.Printf("Error: Configuration file not found or not initialized at expected path:\n%s\nRun mmsync init to start.\n", configPath)
 			os.Exit(1)
 		}
@@ -40,7 +40,7 @@ var repoOpenCmd = &cobra.Command{
 	Use:   "open",
 	Short: "Opens the configuration file with the user's $EDITOR",
 	Run: func(cmd *cobra.Command, args []string) {
-		configPath := config.ResolveConfigPath()
+		configPath := fileio.ResolveConfigPath()
 		isInit := appConf.ConfigSchema.IsInit
 		editor := os.Getenv("EDITOR")
 

@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mmsync/internal/fileio"
 	"github.com/spf13/cobra"
 	"os"
 	"path/filepath"
@@ -28,7 +29,7 @@ mmsync add ./ ~/test_dir --alias="test","test_dir_w_alias"
 Adds the current directory recursively to be staged.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		configPath := config.ResolveConfigPath()
+		configPath := fileio.ResolveConfigPath()
 		isInit := appConf.ConfigSchema.IsInit
 
 		if !isInit {
@@ -119,7 +120,7 @@ func addDirectoryEntry(targetPath string, alias string) error {
 		}
 	}
 
-	dbPath := config.ResolveDbPath()
+	dbPath := fileio.ResolveDbPath()
 
 	newEntry := config.DirData{
 		TargetPath: targetPath,
