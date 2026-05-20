@@ -89,11 +89,11 @@ the progress tracker.
 | `mns man` | Generate and display the manual page | Done |
 | `mns completion [shell]` | Generate autocompletion script (Cobra CLI builtin) | Done |
 | `mns get-archiver` | Show the current archiver (`tar` or `zip`, default: `tar`) | Done |
-| `mns set-archiver <tar|zip>` | Set the archiver | Done |
+| `mns set-archiver <tar\|zip>` | Set the archiver | Done |
 | `mns get-commit-fmt` | Show the commit message format (Go time layout) | Done |
 | `mns set-commit-fmt <format>` | Set the commit message format | Done |
 | `mns get-ignore` | Show whether `.gitignore` is respected during staging (`1`/`0`) | Done |
-| `mns set-ignore <0|1>` | Set whether to respect `.gitignore` during staging | Done |
+| `mns set-ignore <0\|1>` | Set whether to respect `.gitignore` during staging | Done |
 | `mns get-hist-limit` | Show history retention limits (days, max MB) | Done |
 | `mns set-hist-limit -d <days> -s <size_mb>` | Set history retention limits | Done |
 | `mns clear-hist` | Clear staging area and recorded history (with confirmation) | Done |
