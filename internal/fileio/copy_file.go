@@ -14,7 +14,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return fmt.Errorf("failed to open source file %s: %w", src, err)
 	}
-	defer sourceFile.Close()
+	defer func() { _ = sourceFile.Close() }()
 
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return fmt.Errorf("failed to create destination directory for %s: %w", dst, err)
@@ -24,7 +24,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create destination file %s: %w", dst, err)
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	if _, err := io.Copy(destFile, sourceFile); err != nil {
 		return fmt.Errorf("failed to copy content from %s to %s: %w", src, dst, err)

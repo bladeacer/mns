@@ -30,7 +30,7 @@ This application assumes that you know how to create and set up a Git repository
 		}
 		// Your original root command logic goes here
 		// e.g., print help or run default action
-		cmd.Help()
+		_ = cmd.Help()
 	},
 }
 

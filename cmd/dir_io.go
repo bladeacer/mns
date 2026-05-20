@@ -95,13 +95,13 @@ func resolveAndValidatePath(path string) (string, error) {
 		return "", fmt.Errorf("path '%s' is a file, only directories can be added", targetPath)
 	}
 	if targetPath == appConf.ConfigSchema.RepoPath {
-		return "", fmt.Errorf("Cannot circular reference repo path: '%s'", targetPath)
+		return "", fmt.Errorf("cannot circular reference repo path: '%s'", targetPath)
 	}
 	if filepath.Dir(targetPath) == filepath.Dir(appConf.ConfigSchema.ConfigPath) {
-		return "", fmt.Errorf("Cannot circular reference config path: '%s'", targetPath)
+		return "", fmt.Errorf("cannot circular reference config path: '%s'", targetPath)
 	}
 	if filepath.Base(targetPath) == "mnemosync" {
-		return "", fmt.Errorf("Do not the dev repo: '%s'", targetPath)
+		return "", fmt.Errorf("do not use the dev repo: '%s'", targetPath)
 	}
 
 	return targetPath, nil

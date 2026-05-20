@@ -9,44 +9,147 @@ a target Git repository.
 
 The name is inspired by the Greek Goddess of memory Mnemosyne.
 
-## Installation guide
+## Installation
 
-This installation guide assumes you know how to create and set up a Git repository.
-
-**Always backup your files before using mmsync**.
+### Via Go (development)
 
 ```bash
 go install github.com/bladeacer/mmsync@latest
 ```
 
-Ensure that you can access Go binaries in your $PATH.
+### Via binary release
+
+Download the latest binary for your platform from the
+[releases page](https://github.com/bladeacer/mmsync/releases), extract it, and
+place it in your `$PATH`.
+
+**Always backup your files before using mmsync**.
 
 ```bash
 mns
 ```
 
+## Quick start
+
+```bash
+# Initialise with a target Git repository
+mns init -r /path/to/backup-repo
+
+# Add directories to track
+mns add ~/Documents
+mns add ~/Pictures --alias mypics
+
+# Stage them (rsyncs into the repo's .mnemosync/staging/)
+mns stage
+
+# Archive, commit, and push
+mns push
+```
+
 ## Project status
 
-WIP. See [this GitHub project](https://github.com/users/bladeacer/projects/3) for
+Stable. See [this GitHub project](https://github.com/users/bladeacer/projects/3) for
 the progress tracker.
 
-This is my first project using the Go programming language, but I hope it will
-be useful.
+## CLI reference
 
-## Planned features
+| Command | What it does | Status |
+| --- | --- | --- |
+| `mns` | Main help text to stdout | Done |
+| `mns init` | Initialise a new configuration file with default values | Done |
+| `mns add <path>... [-a alias]` | Add one or more directories to track for backup | Done |
+| `mns list` | List all tracked directories | Done |
+| `mns rm <id-or-alias>` | Remove a tracked directory | Done |
+| `mns clear` | Remove all tracked directories (with confirmation) | Done |
+| `mns search <query>` | Search tracked directories by path or alias | Done |
+| `mns change <id-or-alias> [--path] [--alias]` | Change the path or alias of a tracked directory | Done |
+| `mns stage [id-or-alias...]` | Rsync tracked directories to the repo staging area | Done |
+| `mns unstage [id-or-alias...]` | Remove tracked directories from the staging area | Done |
+| `mns status` | Show `git status` of the target repository | Done |
+| `mns log [-n limit]` | Show `git log` of the target repository | Done |
+| `mns push [--no-push]` | Archive staged files, commit, and push to remote | Done |
+| `mns config` | Manage configuration file path | Done |
+| `mns config get` | Print configuration file content | Done |
+| `mns config open` | Open configuration file in `$EDITOR` | Done |
+| `mns repo get` | Print the configured repository path | Done |
+| `mns repo open` | Open the configuration file in `$EDITOR` | Done |
+| `mns health` | Check required binaries (`git`, `rsync`, `tar`, `zip`) and config | Done |
+| `mns version` | Print the version of mnemosync | Done |
+| `mns man` | Generate and display the manual page | Done |
+| `mns completion [shell]` | Generate autocompletion script (Cobra CLI builtin) | Done |
+| `mns get-archiver` | Show the current archiver (`tar` or `zip`, default: `tar`) | Done |
+| `mns set-archiver <tar|zip>` | Set the archiver | Done |
+| `mns get-commit-fmt` | Show the commit message format (Go time layout) | Done |
+| `mns set-commit-fmt <format>` | Set the commit message format | Done |
+| `mns get-ignore` | Show whether `.gitignore` is respected during staging (`1`/`0`) | Done |
+| `mns set-ignore <0|1>` | Set whether to respect `.gitignore` during staging | Done |
+| `mns get-hist-limit` | Show history retention limits (days, max MB) | Done |
+| `mns set-hist-limit -d <days> -s <size_mb>` | Set history retention limits | Done |
+| `mns clear-hist` | Clear staging area and recorded history (with confirmation) | Done |
 
-- Check if required binaries are available before calling the tool
-  - Required binaries: `git, rsync, tar, zip`
+## Workflow
 
-- Help command line flag
+```
+mns add ~/Documents              # register a directory
+mns stage                        # rsync it into <repo>/.mnemosync/staging/
+mns status                       # check git status in the repo
+mns push                         # archive staging dir, commit, push
+```
 
-- CRUD target directories which user wishes to backup e.g.
+- Staging files are stored under `<repo>/.mnemosync/staging/` which is automatically
+  gitignored — individual files are never tracked.
+- On `push`, the staging directory is archived with `tar` (default) or `zip`,
+  the archive is committed, and the remote is pushed.
+- Only the 5 most recent archives are kept in the repo (configurable via
+  `keep_archives`).
+- Archives exceeding 5 MB trigger Git LFS tracking if `git-lfs` is installed
+  (configurable via `lfs_threshold_mb`).
 
-- `rsync` to mirror said target directories to a `~/.mnemosync/folders`
-  - Either manually triggered or we integrate `cron`
-- Wrapper for user to manually copy the files and push them in their Git repository
+## Configuration
 
-- Wrapper to let user set default commit message format
+The configuration file is created at `~/.config/mmsync/config.yaml` (or
+`$MMSYNC_CONF` if set) after running `mns init`. Default values:
+
+| Field | Default | Description |
+| --- | --- | --- |
+| `archiver` | `tar` | Archive tool (`tar` or `zip`) |
+| `commit_fmt` | `mnemosync archive 2006-01-02` | `time.Format` layout for commit messages |
+| `respect_gitignore` | `true` | Whether to exclude `.gitignore` patterns during rsync |
+| `hist_limit_days` | `7` | Days to retain staging history |
+| `hist_limit_size_mb` | `1024` | Max size of staging history in MB |
+| `keep_archives` | `5` | Number of recent archives to keep in the repo |
+| `lfs_threshold_mb` | `5` | Archive size threshold to auto-configure Git LFS |
+
+## Required dependencies
+
+- `git` — version control
+- `rsync` — staging mirroring (pre-installed on macOS and most Linux distros; on
+  Windows use [MSYS2](https://www.msys2.org/) or [cwRsync](https://www.itefix.net/cwrsync))
+- `tar` or `zip` — at least one archiver must be available (pre-installed on
+  macOS and Linux; on Windows use [MSYS2](https://www.msys2.org/))
+- `git-lfs` — optional, auto-configured for archives exceeding `lfs_threshold_mb`
+
+## Development
+
+```bash
+git clone https://github.com/bladeacer/mmsync
+cd mmsync
+make build       # builds the mns binary
+make lint        # run golangci-lint
+make test        # run all tests
+make gowatch     # hot-reload during active development
+make snapshot    # test goreleaser locally (builds all platforms)
+```
+
+### Release
+
+Releases are built with [GoReleaser](https://goreleaser.com):
+
+```bash
+make tag         # prompts for a version and creates an annotated tag
+git push origin --tags
+goreleaser release --clean
+```
 
 ## LLM Usage Disclosure
 
@@ -64,7 +167,7 @@ License version 3 (GPLv3) License.
 
 ```
 This file is part of mnemosync. mnemosync is a CLI tool that lets you add
-folders to backup manually to a target Git repository. 
+folders to backup manually to a target Git repository.
 
 Copyright (c) 2025 bladeacer
 
@@ -77,7 +180,7 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with mnemosync.
-If not, see <https://www.gnu.org/licenses/>. 
+If not, see <https://www.gnu.org/licenses/>.
 ```
 
 ### License file
@@ -87,108 +190,3 @@ You can find the [license file here](./LICENSE).
 ## Credits
 
 This CLI was made possible by [Cobra CLI](https://github.com/spf13/cobra).
-
-## Planned CLI spec
-
-View currently available options by running mnemosync without any flags or arguments.
-
-There is also `mns man` for a generated manual page.
-
-| Command | What it does | Implementation Status |
-| --- | --- | --- |
-| `mns` | Main help text to stdout. | Done |
-| `mns init` | Initialise a new configuration file with default values. | Done |
-| `mns config` | Manage configuration file. | WIP |
-| `mns completion` | Generate autocompletion script for target shell (Cobra CLI builtin)  | Done |
-| `mns health` | Check Health and installation of dependencies (optional or not) | Done |
-| `mns help` | Get help text for specific command (Status depends on target command) | WIP |
-| `mns man` | Generates the manual page and displays with less | WIP |
-| `mns add` | Add target file/folder with target with alias support. | WIP |
-
-<!-- ```bash -->
-<!-- ## Init and config -->
-<!-- # Init the app with helpers to get the user to set path config and all -->
-<!-- mmsync init --> 
-<!-- mmsync config -->
-<!-- mmsync config open -->
-<!-- # Prints to stdout -->
-<!-- mmsync repo get -->
-
-<!-- ## CRUD directories to mmsync before staging -->
-<!-- # Save this in the local viewable db somehow each time the binary is called. -->
-<!-- mmsync add <target_path> -a <optional_alias> -->
-<!-- mmsync list -->
-<!-- mmsync change <target_path-or-alias> <new-target_path-or-alias> -->
-<!-- mmsync rm <target_path-or-alias> -->
-
-<!-- ## Find a mmsync path or alias that has been added -->
-<!-- mmsync search <query-by-path-or-alias> -->
-
-<!-- ## Add warning for user to confirm if they wish to delete all directories they added -->
-<!-- mmsync clear -->
-
-<!-- # Backup related -->
-<!-- ## Technical info: staging is just rsyncing over to the target repo -->
-<!-- ## You can use . to include all directories and aliases -->
-
-<!-- # rsyncs all added target mmsync directories or aliases to staging, and then -->
-<!-- # calls git add in the target repo -->
-<!-- mmsync stage <target_path-or-alias> --> 
-
-<!-- # rsyncs unstages added target mmsync directories or aliases to staging --> 
-<!-- # git restore --staged <target_path-or-alias> in the target repo -->
-<!-- # somehow map aliases to directory names -->
-<!-- mmsync unstage <target_path-or-alias> --> 
-
-<!-- # get status of staging -->
-<!-- # git status in the target repo -->
-<!-- mmsync status -->
-
-<!-- # get staging history --> 
-<!-- # git log --oneline target repo -->
-<!-- mmsync log -->
-
-<!-- ## get staging history limit in days before it is cleared. Defaults to 7 days -->
-<!-- ## and a max of 1024 MB. Limitation only enforced when the binary is called -->
-
-<!-- ## Need to read last modified time of each rsync mirrored directory or save its -->
-<!-- ## last modified time each time an operation is done on it. -->
-<!-- ## with confirmation message -->
-
-<!-- mmsync get-hist-limit --> 
-<!-- mmsync set-hist-limit -d <number_of_days> -s <max_size_in_mb> -->
-
-<!-- # calls git restore --staged . and git restore . in the target repo -->
-<!-- # with confirmation message -->
-<!-- mmsync clear-hist # clears staging history -->
-
-<!-- # set archive options -->
-<!-- # write this option in the config file somehow -->
-<!-- mmsync set-archiver tar|zip -->
-<!-- mmsync get-archiver # gets archive tool used, defaults to tar -->
-
-<!-- # Git related -->
-
-<!-- ## Configure commit messages -->
-<!-- mmsync get-commit-fmt # Defaults to mnemosync archive ISO timestamp -->
-<!-- mmsync set-commit-fmt <custom_format> -->
-
-<!-- ## checks if anything in staging, if yes it compresses writes the archive file -->
-<!-- ## over to be pushed -->
-<!-- ## if not, warns the user that staging is empty or files are not staged yet -->
-<!-- ## When pushing, write folder and filenames affected to viewable local db as -->
-<!-- ## part of staging history -->
-<!-- ## Also does the needed git commit and push on behalf of the user. -->
-<!-- mmsync push --> 
-
-<!-- ## Respecting .gitignore -->
-<!-- ## mmsync respects gitignore in the target repo when adding directories or aliases -->
-<!-- ## Returns true or 1 by default -->
-<!-- ## When setting to 0, warning + confirmation -->
-<!-- mmsync get-ignore --> 
-<!-- mmsync set-ignore 0|1 -->
-
-<!-- # Misc -->
-<!-- mmsync version -->
-<!-- mmsync help -->
-<!-- ``` -->

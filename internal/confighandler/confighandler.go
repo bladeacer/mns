@@ -29,7 +29,7 @@ func LoadConfig() (*config.MnemoConf, error) {
 	configPath := fileio.ResolveConfigPath()
 
 	if err := fileio.MigrateConfigData(configPath); err != nil {
-		return nil, fmt.Errorf("Configuration migration failed: %w", err)
+		return nil, fmt.Errorf("configuration migration failed: %w", err)
 	}
 	defaultCfg := config.GetMnemoConf()
 
@@ -106,7 +106,7 @@ func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf)
 	}
 
 	if !loadedSchema.IsInit {
-		warnings = append(warnings, fmt.Errorf("found configuration file marked IsInit=false. Resetting RepoPath/DbPath."))
+		warnings = append(warnings, fmt.Errorf("found configuration file marked IsInit=false, resetting RepoPath/DbPath"))
 
 		loadedSchema.RepoPath = defaultSchema.RepoPath
 		loadedSchema.DbPath = defaultSchema.DbPath

@@ -30,12 +30,6 @@ func runGit(args ...string) error {
 	return cmd.Run()
 }
 
-func runGitCapture(args ...string) (string, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Dir = repoPath()
-	out, err := cmd.CombinedOutput()
-	return string(out), err
-}
 
 var stageCmd = &cobra.Command{
 	Use:   "stage [id-or-alias...]",
@@ -337,7 +331,7 @@ func ensureGitignoreInDir(dir string) error {
 		}
 	}
 
-	hasContent := len(content) > 0 && !(len(lines) == 1 && lines[0] == "")
+	hasContent := len(content) > 0 && (len(lines) != 1 || lines[0] != "")
 	entry := "/.mnemosync/\n"
 	if hasContent {
 		entry = "\n" + entry
@@ -347,7 +341,7 @@ func ensureGitignoreInDir(dir string) error {
 	if err != nil {
 		return fmt.Errorf("opening .gitignore: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	if _, err := f.WriteString(entry); err != nil {
 		return fmt.Errorf("writing to .gitignore: %w", err)
@@ -483,7 +477,7 @@ func cleanupStaging(stagingDir string) {
 	}
 	for _, e := range entries {
 		path := filepath.Join(stagingDir, e.Name())
-		os.RemoveAll(path)
+		_ = os.RemoveAll(path)
 	}
 }
 

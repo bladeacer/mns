@@ -4,6 +4,8 @@ import (
 	"github.com/bladeacer/mmsync/internal/fileio"
 )
 
+var AppVersion = "0.1.0"
+
 type ConfigSchema struct {
 	ConfigPath       string `yaml:"config_path"`
 	AppVersion       string `yaml:"app_version"`
@@ -28,7 +30,7 @@ func GetMnemoConf() *MnemoConf {
 	return &MnemoConf{
 		ConfigSchema{
 			ConfigPath:       fileio.ResolveConfigPath(),
-			AppVersion:       "Version 0.0.1",
+			AppVersion:       AppVersion,
 			IsInit:           false,
 			RepoPath:         "",
 			DbPath:           fileio.ResolveDbPath(),

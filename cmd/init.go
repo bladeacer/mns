@@ -69,7 +69,7 @@ var initCmd = &cobra.Command{
 		if exists {
 			fmt.Printf("\nRepository path validated: '%s/.git' exists.\n", finalRepoPath)
 			yaml.WriteYAML(defaultConfig, configPath)
-			config.GetDataStore().SaveData(dbPath)
+			_ = config.GetDataStore().SaveData(dbPath)
 			fmt.Printf("\nDatabase created at: '%s'.\n", dbPath)
 
 			repoPath := finalRepoPath
@@ -182,7 +182,7 @@ func processRepoPath(inputPath string) (string, error) {
 
 func getRepoPathInteractive() (string, error) {
 	line := liner.NewLiner()
-	defer line.Close()
+	defer func() { _ = line.Close() }()
 
 	line.SetCompleter(pathCompleter)
 	line.SetTabCompletionStyle(liner.TabPrints)
