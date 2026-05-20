@@ -8,53 +8,84 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
+
+var manForce bool
 
 // manCmd represents the man command
 var manCmd = &cobra.Command{
 	Use:   "man",
 	Short: "Generates the manual page for mnemosync",
-	Long: `Generates and displays manual page for mnemosync
+	Long: `Generates and displays manual page for mnemosync,
+persisting it to ~/.local/share/man/man1/mns.1 for system man(1) access.
 
-Does not persist it to a file.`,
+Use --force to overwrite the local man page even if unchanged.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// Use a better name to avoid conflict with the standard man command
 		DisplayManPage()
 	},
 }
 
-// TODO: Persist the generated man page to local man-db once it is called,
-// add a flag to force persisting to local man-db
+func generateManPage() (string, error) {
+	manPage, err := mcobra.NewManPage(1, RootCmd)
+	if err != nil {
+		return "", err
+	}
+
+	manPage = manPage.WithSection("Copyright", "(C) 2025 bladeacer.\n" +
+		"Released under GPLv3 license.")
+
+	return manPage.Build(roff.NewDocument()), nil
+}
+
+func persistManPage(content string) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("cannot determine home directory: %w", err)
+	}
+
+	manDir := filepath.Join(homeDir, ".local", "share", "man", "man1")
+	manPath := filepath.Join(manDir, "mns.1")
+
+	if err := os.MkdirAll(manDir, 0755); err != nil {
+		return fmt.Errorf("cannot create man directory: %w", err)
+	}
+
+	if !manForce {
+		existing, err := os.ReadFile(manPath)
+		if err == nil && string(existing) == content {
+			return nil
+		}
+	}
+
+	if err := os.WriteFile(manPath, []byte(content), 0644); err != nil {
+		return fmt.Errorf("cannot write man page: %w", err)
+	}
+
+	_ = exec.Command("mandb", "-q").Run()
+
+	return nil
+}
 
 func DisplayManPage() {
-	manPage, err := mcobra.NewManPage(1, RootCmd)
+	manContent, err := generateManPage()
 	if err != nil {
 		panic(err)
 	}
 
-	manPage = manPage.WithSection("Copyright", "(C) 2025 bladeacer.\n"+
-		"Released under GPLv3 license.")
+	if err := persistManPage(manContent); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not persist man page to man-db: %v\n", err)
+	}
 
-	// Get the generated man page content.
-	manContent := manPage.Build(roff.NewDocument())
-
-	// 1. Create a buffer to hold the man page content.
 	var buf bytes.Buffer
 	buf.WriteString(manContent)
 
-	// 2. Get the user's preferred pager (like `less` or `more`).
 	pager := os.Getenv("PAGER")
 	if pager == "" {
-		pager = "less" // Default to `less`
+		pager = "less"
 	}
 
-	// 3. Set up the man page viewer command.
-	// We use `man` as the viewer to get proper formatting, with `less` as the pager.
-	// `man -l` command formats and displays a local man page file.
-	// We pipe the content to `man`'s standard input.
 	manCmd := exec.Command("man", "-l", "-")
-
-	// Set the command's standard input to our buffer.
 	manCmd.Stdin = &buf
 	manCmd.Stdout = os.Stdout
 	manCmd.Stderr = os.Stderr
@@ -90,4 +121,5 @@ func DisplayManPage() {
 
 func init() {
 	RootCmd.AddCommand(manCmd)
+	manCmd.Flags().BoolVarP(&manForce, "force", "f", false, "Force overwrite of existing man page")
 }

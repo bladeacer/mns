@@ -10,8 +10,9 @@ import (
 	"strings"
 )
 
-// TODO: This command helps add directory paths to be staged before performing backup. Have CRUD in this.
-// Somehow rsync directories to the target directory and then tar archive all of them when push is called
+// CRUD operations for tracked directories are split across:
+//   - add: dir_io.go (Create)
+//   - list, rm, clear, search, change: crud.go (Read/Update/Delete)
 
 var aliases []string
 var addCmd = &cobra.Command{
