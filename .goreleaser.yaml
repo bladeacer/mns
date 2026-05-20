@@ -1,6 +1,6 @@
 version: 2
 
-project_name: mnemosync
+project_name: mns
 
 before:
   hooks:
@@ -49,4 +49,4 @@ changelog:
 release:
   github:
     owner: bladeacer
-    name: mnemosync
+    name: mns
