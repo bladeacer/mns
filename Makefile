@@ -17,6 +17,12 @@ build: ## Build the mns binary
 test: ## Run all tests
 	go test ./... -v -count=1
 
+cover: ## Run tests with code coverage
+	go test -coverpkg=./... -coverprofile=coverage.out ./... -count=1
+	@go tool cover -func=coverage.out | tail -1
+	@echo "---"
+	@echo "HTML report: go tool cover -html=coverage.out"
+
 lint: ## Run golangci-lint
 	golangci-lint run ./...
 

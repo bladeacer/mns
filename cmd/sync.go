@@ -30,7 +30,6 @@ func runGit(args ...string) error {
 	return cmd.Run()
 }
 
-
 var stageCmd = &cobra.Command{
 	Use:   "stage [id-or-alias...]",
 	Short: "Rsync tracked directories to the repo staging area",

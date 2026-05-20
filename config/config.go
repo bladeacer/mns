@@ -25,7 +25,6 @@ type MnemoConf struct {
 	ConfigSchema ConfigSchema `yaml:"config_schema"`
 }
 
-
 func GetMnemoConf() *MnemoConf {
 	return &MnemoConf{
 		ConfigSchema{

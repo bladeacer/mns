@@ -11,18 +11,18 @@ import (
 )
 
 var knownSchemaFields = map[string]bool{
-	"config_path":       true,
-	"app_version":       true,
-	"is_init":           true,
-	"repo_path":         true,
-	"db_path":           true,
-	"archiver":          true,
-	"commit_fmt":        true,
-	"respect_gitignore": true,
-	"hist_limit_days":   true,
+	"config_path":        true,
+	"app_version":        true,
+	"is_init":            true,
+	"repo_path":          true,
+	"db_path":            true,
+	"archiver":           true,
+	"commit_fmt":         true,
+	"respect_gitignore":  true,
+	"hist_limit_days":    true,
 	"hist_limit_size_mb": true,
-	"keep_archives":     true,
-	"lfs_threshold_mb":  true,
+	"keep_archives":      true,
+	"lfs_threshold_mb":   true,
 }
 
 func LoadConfig() (*config.MnemoConf, error) {
@@ -88,7 +88,6 @@ func needsSchemaUpdate(data []byte) bool {
 	}
 	return false
 }
-
 
 func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf) []error {
 	warnings := make([]error, 0)

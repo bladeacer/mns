@@ -1,10 +1,10 @@
 package fileio
 
 import (
-	"os"
 	"fmt"
-	"path/filepath"
 	"io"
+	"os"
+	"path/filepath"
 )
 
 // Optimise this operation to just move?
@@ -84,4 +84,3 @@ func MigrateConfigData(newConfigPath string) error {
 
 	return nil
 }
-
