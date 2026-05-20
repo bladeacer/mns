@@ -13,11 +13,11 @@ var getArchiverCmd = &cobra.Command{
 	Use:   "get-archiver",
 	Short: "Show the current archiver (tar or zip)",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(appConf.ConfigSchema.Archiver)
+		fmt.Println(AppConf.ConfigSchema.Archiver)
 	},
 }
 
@@ -26,7 +26,7 @@ var setArchiverCmd = &cobra.Command{
 	Short: "Set the archiver to use (tar or zip)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -35,8 +35,8 @@ var setArchiverCmd = &cobra.Command{
 			fmt.Fprintf(os.Stderr, "Error: archiver must be 'tar' or 'zip', got '%s'\n", val)
 			os.Exit(1)
 		}
-		appConf.ConfigSchema.Archiver = val
-		saveConfig()
+		AppConf.ConfigSchema.Archiver = val
+		SaveConfig()
 		fmt.Printf("Archiver set to '%s'.\n", val)
 	},
 }
@@ -45,11 +45,11 @@ var getCommitFmtCmd = &cobra.Command{
 	Use:   "get-commit-fmt",
 	Short: "Show the current commit message format",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(appConf.ConfigSchema.CommitFmt)
+		fmt.Println(AppConf.ConfigSchema.CommitFmt)
 	},
 }
 
@@ -64,12 +64,12 @@ Examples:
   mns set-commit-fmt "backup 2006-01-02 150405"`,
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		appConf.ConfigSchema.CommitFmt = args[0]
-		saveConfig()
+		AppConf.ConfigSchema.CommitFmt = args[0]
+		SaveConfig()
 		fmt.Printf("Commit format set to '%s'.\n", args[0])
 	},
 }
@@ -78,11 +78,11 @@ var getIgnoreCmd = &cobra.Command{
 	Use:   "get-ignore",
 	Short: "Show whether .gitignore is respected during staging",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		if appConf.ConfigSchema.RespectGitignore {
+		if AppConf.ConfigSchema.RespectGitignore {
 			fmt.Println("1")
 		} else {
 			fmt.Println("0")
@@ -95,20 +95,20 @@ var setIgnoreCmd = &cobra.Command{
 	Short: "Set whether to respect .gitignore during staging (1=yes, 0=no)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 		switch args[0] {
 		case "0":
-			appConf.ConfigSchema.RespectGitignore = false
+			AppConf.ConfigSchema.RespectGitignore = false
 		case "1":
-			appConf.ConfigSchema.RespectGitignore = true
+			AppConf.ConfigSchema.RespectGitignore = true
 		default:
 			fmt.Fprintf(os.Stderr, "Error: value must be '0' or '1', got '%s'\n", args[0])
 			os.Exit(1)
 		}
-		saveConfig()
+		SaveConfig()
 		fmt.Printf("Respect .gitignore set to %s.\n", args[0])
 	},
 }
@@ -117,13 +117,13 @@ var getHistLimitCmd = &cobra.Command{
 	Use:   "get-hist-limit",
 	Short: "Show the history retention limits",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Printf("History retention:\n")
-		fmt.Printf("  Days: %d\n", appConf.ConfigSchema.HistLimitDays)
-		fmt.Printf("  Max size: %d MB\n", appConf.ConfigSchema.HistLimitSizeMb)
+		fmt.Printf("  Days: %d\n", AppConf.ConfigSchema.HistLimitDays)
+		fmt.Printf("  Max size: %d MB\n", AppConf.ConfigSchema.HistLimitSizeMb)
 	},
 }
 
@@ -131,7 +131,7 @@ var setHistLimitCmd = &cobra.Command{
 	Use:   "set-hist-limit",
 	Short: "Set the history retention limits",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -143,12 +143,12 @@ var setHistLimitCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		if days > 0 {
-			appConf.ConfigSchema.HistLimitDays = days
+			AppConf.ConfigSchema.HistLimitDays = days
 		}
 		if size > 0 {
-			appConf.ConfigSchema.HistLimitSizeMb = size
+			AppConf.ConfigSchema.HistLimitSizeMb = size
 		}
-		saveConfig()
+		SaveConfig()
 		fmt.Println("History limits updated.")
 	},
 }
@@ -159,7 +159,7 @@ var clearHistCmd = &cobra.Command{
 	Long: `Removes all files from the staging area and clears the recorded history.
 Requires confirmation.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -172,14 +172,14 @@ Requires confirmation.`,
 			return
 		}
 
-		staging := stagingDir()
+		staging := StagingDir()
 		if err := os.RemoveAll(staging); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not remove staging directory: %v\n", err)
 		}
 
-		dataStore.ClearHistory()
+		DataStore.ClearHistory()
 		dbPath := fileio.ResolveDbPath()
-		if err := dataStore.SaveData(dbPath); err != nil {
+		if err := DataStore.SaveData(dbPath); err != nil {
 			fmt.Fprintf(os.Stderr, "Error saving database: %v\n", err)
 			os.Exit(1)
 		}
@@ -188,24 +188,24 @@ Requires confirmation.`,
 	},
 }
 
-func saveConfig() {
+func SaveConfig() {
 	configPath := fileio.ResolveConfigPath()
-	if err := yamlwrapper.SaveConfig(appConf, configPath); err != nil {
+	if err := yamlwrapper.SaveConfig(AppConf, configPath); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving configuration: %v\n", err)
 		os.Exit(1)
 	}
 }
 
 func init() {
-	rootCmd.AddCommand(getArchiverCmd)
-	rootCmd.AddCommand(setArchiverCmd)
-	rootCmd.AddCommand(getCommitFmtCmd)
-	rootCmd.AddCommand(setCommitFmtCmd)
-	rootCmd.AddCommand(getIgnoreCmd)
-	rootCmd.AddCommand(setIgnoreCmd)
-	rootCmd.AddCommand(getHistLimitCmd)
-	rootCmd.AddCommand(setHistLimitCmd)
-	rootCmd.AddCommand(clearHistCmd)
+	RootCmd.AddCommand(getArchiverCmd)
+	RootCmd.AddCommand(setArchiverCmd)
+	RootCmd.AddCommand(getCommitFmtCmd)
+	RootCmd.AddCommand(setCommitFmtCmd)
+	RootCmd.AddCommand(getIgnoreCmd)
+	RootCmd.AddCommand(setIgnoreCmd)
+	RootCmd.AddCommand(getHistLimitCmd)
+	RootCmd.AddCommand(setHistLimitCmd)
+	RootCmd.AddCommand(clearHistCmd)
 
 	setHistLimitCmd.Flags().IntP("days", "d", 0, "Number of days to retain history")
 	setHistLimitCmd.Flags().Int64P("size", "s", 0, "Maximum size in MB for history")

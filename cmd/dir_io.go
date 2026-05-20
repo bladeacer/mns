@@ -30,7 +30,7 @@ Adds the current directory recursively to be staged.`,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		configPath := fileio.ResolveConfigPath()
-		isInit := appConf.ConfigSchema.IsInit
+		isInit := AppConf.ConfigSchema.IsInit
 
 		if !isInit {
 			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mns init to start.\n", configPath)
@@ -49,7 +49,7 @@ func addWrapper(args []string) {
 	}
 
 	for i, argPath := range args {
-		resolvedPath, err := resolveAndValidatePath(argPath)
+		resolvedPath, err := ResolveAndValidatePath(argPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error processing path '%s': %v\n", argPath, err)
 			os.Exit(1)
@@ -61,7 +61,7 @@ func addWrapper(args []string) {
 		} else {
 			alias = filepath.Base(resolvedPath)
 		}
-		err = addDirectoryEntry(resolvedPath, alias)
+		err = AddDirectoryEntry(resolvedPath, alias)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Fatal Error adding path '%s': %v\n", argPath, err)
 			os.Exit(1)
@@ -69,7 +69,7 @@ func addWrapper(args []string) {
 	}
 }
 
-func resolveAndValidatePath(path string) (string, error) {
+func ResolveAndValidatePath(path string) (string, error) {
 	if strings.HasPrefix(path, "~/") {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
@@ -94,10 +94,10 @@ func resolveAndValidatePath(path string) (string, error) {
 	if !info.IsDir() {
 		return "", fmt.Errorf("path '%s' is a file, only directories can be added", targetPath)
 	}
-	if targetPath == appConf.ConfigSchema.RepoPath {
+	if targetPath == AppConf.ConfigSchema.RepoPath {
 		return "", fmt.Errorf("cannot circular reference repo path: '%s'", targetPath)
 	}
-	if filepath.Dir(targetPath) == filepath.Dir(appConf.ConfigSchema.ConfigPath) {
+	if filepath.Dir(targetPath) == filepath.Dir(AppConf.ConfigSchema.ConfigPath) {
 		return "", fmt.Errorf("cannot circular reference config path: '%s'", targetPath)
 	}
 	if filepath.Base(targetPath) == "mnemosync" {
@@ -107,8 +107,8 @@ func resolveAndValidatePath(path string) (string, error) {
 	return targetPath, nil
 }
 
-func addDirectoryEntry(targetPath string, alias string) error {
-	for newID, entry := range dataStore.TrackedDirs {
+func AddDirectoryEntry(targetPath string, alias string) error {
+	for newID, entry := range DataStore.TrackedDirs {
 		if entry.TargetPath == targetPath {
 			return fmt.Errorf("path '%s' is already being tracked (ID: %s, Alias: %s)",
 				targetPath, newID, entry.Alias)
@@ -127,9 +127,9 @@ func addDirectoryEntry(targetPath string, alias string) error {
 		Alias:      alias,
 	}
 
-	newID := dataStore.AddDir(newEntry)
+	newID := DataStore.AddDir(newEntry)
 
-	if err := dataStore.SaveData(dbPath); err != nil {
+	if err := DataStore.SaveData(dbPath); err != nil {
 		return fmt.Errorf("failed to save data store after adding entry: %w", err)
 	}
 
@@ -142,7 +142,7 @@ func addDirectoryEntry(targetPath string, alias string) error {
 }
 
 func init() {
-	rootCmd.AddCommand(addCmd)
+	RootCmd.AddCommand(addCmd)
 
 	addCmd.Flags().StringSliceVarP(&aliases, "alias", "a", []string{}, "Comma-separated list of aliases for the corresponding paths.")
 }

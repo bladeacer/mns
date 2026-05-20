@@ -14,17 +14,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func stagingDir() string {
-	return filepath.Join(appConf.ConfigSchema.RepoPath, ".mnemosync", "staging")
+func StagingDir() string {
+	return filepath.Join(AppConf.ConfigSchema.RepoPath, ".mnemosync", "staging")
 }
 
-func repoPath() string {
-	return appConf.ConfigSchema.RepoPath
+func RepoPath() string {
+	return AppConf.ConfigSchema.RepoPath
 }
 
-func runGit(args ...string) error {
+func RunGit(args ...string) error {
 	cmd := exec.Command("git", args...)
-	cmd.Dir = repoPath()
+	cmd.Dir = RepoPath()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -41,19 +41,19 @@ Examples:
   mns stage
   mns stage 1 myalias`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		dirs := selectDirs(args)
+		dirs := SelectDirs(args)
 
 		if len(dirs) == 0 {
 			fmt.Println("No directories to stage.")
 			return
 		}
 
-		staging := stagingDir()
+		staging := StagingDir()
 		if err := os.MkdirAll(staging, 0755); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating staging directory %s: %v\n", staging, err)
 			os.Exit(1)
@@ -64,7 +64,7 @@ Examples:
 			fmt.Printf("Staging '%s' (%s) -> %s\n", entry.Alias, entry.TargetPath, dest)
 
 			rsyncArgs := []string{"-a", "--delete"}
-			if !appConf.ConfigSchema.RespectGitignore {
+			if !AppConf.ConfigSchema.RespectGitignore {
 				rsyncArgs = append(rsyncArgs, "--exclude=.gitignore")
 			}
 			rsyncArgs = append(rsyncArgs, entry.TargetPath+"/", dest)
@@ -92,26 +92,26 @@ Examples:
   mns unstage
   mns unstage 1 myalias`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		if err := ensureGitignore(); err != nil {
+		if err := EnsureGitignore(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error ensuring .gitignore: %v\n", err)
 			os.Exit(1)
 		}
 
-		pruneStaging()
+		PruneStaging()
 
-		dirs := selectDirs(args)
+		dirs := SelectDirs(args)
 
 		if len(dirs) == 0 {
 			fmt.Println("No directories to stage.")
 			return
 		}
 
-		staging := stagingDir()
+		staging := StagingDir()
 		if err := os.MkdirAll(staging, 0755); err != nil {
 			fmt.Fprintf(os.Stderr, "Error creating staging directory %s: %v\n", staging, err)
 			os.Exit(1)
@@ -122,7 +122,7 @@ Examples:
 			fmt.Printf("Staging '%s' (%s) -> %s\n", entry.Alias, entry.TargetPath, dest)
 
 			rsyncArgs := []string{"-av", "--delete"}
-			if !appConf.ConfigSchema.RespectGitignore {
+			if !AppConf.ConfigSchema.RespectGitignore {
 				rsyncArgs = append(rsyncArgs, "--exclude=.gitignore")
 			}
 			rsyncArgs = append(rsyncArgs, entry.TargetPath+"/", dest)
@@ -144,12 +144,12 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show git status of the target repository",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		if err := runGit("status"); err != nil {
+		if err := RunGit("status"); err != nil {
 			os.Exit(1)
 		}
 	},
@@ -159,7 +159,7 @@ var logCmd = &cobra.Command{
 	Use:   "log",
 	Short: "Show git log of the target repository",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -171,7 +171,7 @@ var logCmd = &cobra.Command{
 		}
 		gitArgs = append(gitArgs, args...)
 
-		if err := runGit(gitArgs...); err != nil {
+		if err := RunGit(gitArgs...); err != nil {
 			os.Exit(1)
 		}
 	},
@@ -187,21 +187,21 @@ Examples:
   mns push
   mns push --no-push`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := ensureInitialized(); err != nil {
+		if err := EnsureInitialized(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
 
 		noPush, _ := cmd.Flags().GetBool("no-push")
 
-		if err := ensureGitignore(); err != nil {
+		if err := EnsureGitignore(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error ensuring .gitignore: %v\n", err)
 			os.Exit(1)
 		}
 
-		pruneStaging()
+		PruneStaging()
 
-		staging := stagingDir()
+		staging := StagingDir()
 		stagingInfo, err := os.Stat(staging)
 		if err != nil || !stagingInfo.IsDir() {
 			fmt.Fprintf(os.Stderr, "Error: staging directory not found at %s.\nRun 'mns stage' first.\n", staging)
@@ -215,22 +215,22 @@ Examples:
 		}
 
 		timestamp := time.Now().Format("20060102-150405")
-		archiver := appConf.ConfigSchema.Archiver
+		archiver := AppConf.ConfigSchema.Archiver
 		var archivePath string
 		var archiveName string
 
 		switch archiver {
 		case "zip":
 			archiveName = fmt.Sprintf("mnemosync-backup-%s.zip", timestamp)
-			archivePath = filepath.Join(repoPath(), archiveName)
-			if err := createZipArchive(staging, archivePath); err != nil {
+			archivePath = filepath.Join(RepoPath(), archiveName)
+			if err := CreateZipArchive(staging, archivePath); err != nil {
 				fmt.Fprintf(os.Stderr, "Error creating zip archive: %v\n", err)
 				os.Exit(1)
 			}
 		default:
 			archiveName = fmt.Sprintf("mnemosync-backup-%s.tar.gz", timestamp)
-			archivePath = filepath.Join(repoPath(), archiveName)
-			if err := createTarArchive(staging, archivePath); err != nil {
+			archivePath = filepath.Join(RepoPath(), archiveName)
+			if err := CreateTarArchive(staging, archivePath); err != nil {
 				fmt.Fprintf(os.Stderr, "Error creating tar archive: %v\n", err)
 				os.Exit(1)
 			}
@@ -239,26 +239,26 @@ Examples:
 		archiveInfo, _ := os.Stat(archivePath)
 		fmt.Printf("Created archive: %s (%d bytes)\n", archiveName, archiveInfo.Size())
 
-		pruneOldArchives(archiver)
+		PruneOldArchives(archiver)
 
-		if err := ensureLfsTracking(archivePath); err != nil {
+		if err := EnsureLfsTracking(archivePath); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: could not configure Git LFS: %v\n", err)
 		}
 
 		fmt.Println("Running git add -A...")
-		if err := runGit("add", "-A"); err != nil {
+		if err := RunGit("add", "-A"); err != nil {
 			os.Exit(1)
 		}
 
-		commitMsg := time.Now().Format(appConf.ConfigSchema.CommitFmt)
+		commitMsg := time.Now().Format(AppConf.ConfigSchema.CommitFmt)
 		fmt.Printf("Committing: %s\n", commitMsg)
-		if err := runGit("commit", "-m", commitMsg); err != nil {
+		if err := RunGit("commit", "-m", commitMsg); err != nil {
 			os.Exit(1)
 		}
 
 		if !noPush {
 			fmt.Println("Pushing to remote...")
-			if err := runGit("push"); err != nil {
+			if err := RunGit("push"); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: git push failed\n")
 			} else {
 				fmt.Println("Push complete.")
@@ -275,22 +275,22 @@ Examples:
 		}
 
 		dbPath := fileio.ResolveDbPath()
-		dataStore.AddHistory(config.StagingHistoryEntry{
+		DataStore.AddHistory(config.StagingHistoryEntry{
 			Timestamp: time.Now().Format(time.RFC3339),
 			Archive:   archiveName,
 			SizeBytes: archiveInfo.Size(),
 			Dirs:      aliases,
 		})
-		if err := dataStore.SaveData(dbPath); err != nil {
+		if err := DataStore.SaveData(dbPath); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to save staging history: %v\n", err)
 		}
 
-		cleanupStaging(staging)
+		CleanupStaging(staging)
 		fmt.Println("Push complete. Staging directory cleaned.")
 	},
 }
 
-func createTarArchive(srcDir, dstPath string) error {
+func CreateTarArchive(srcDir, dstPath string) error {
 	parent := filepath.Dir(srcDir)
 	base := filepath.Base(srcDir)
 	args := []string{"-czf", dstPath, "-C", parent, base}
@@ -300,7 +300,7 @@ func createTarArchive(srcDir, dstPath string) error {
 	return cmd.Run()
 }
 
-func createZipArchive(srcDir, dstPath string) error {
+func CreateZipArchive(srcDir, dstPath string) error {
 	cmd := exec.Command("zip", "-r", dstPath, ".")
 	cmd.Dir = srcDir
 	cmd.Stdout = os.Stdout
@@ -308,11 +308,11 @@ func createZipArchive(srcDir, dstPath string) error {
 	return cmd.Run()
 }
 
-func ensureGitignore() error {
-	return ensureGitignoreInDir(repoPath())
+func EnsureGitignore() error {
+	return EnsureGitignoreInDir(RepoPath())
 }
 
-func ensureGitignoreInDir(dir string) error {
+func EnsureGitignoreInDir(dir string) error {
 	gitignorePath := filepath.Join(dir, ".gitignore")
 
 	content, err := os.ReadFile(gitignorePath)
@@ -350,15 +350,15 @@ func ensureGitignoreInDir(dir string) error {
 	return nil
 }
 
-func pruneStaging() {
-	staging := stagingDir()
+func PruneStaging() {
+	staging := StagingDir()
 	entries, err := os.ReadDir(staging)
 	if err != nil {
 		return
 	}
 
 	aliases := make(map[string]bool)
-	for _, entry := range dataStore.TrackedDirs {
+	for _, entry := range DataStore.TrackedDirs {
 		aliases[entry.Alias] = true
 	}
 
@@ -376,8 +376,8 @@ func pruneStaging() {
 	}
 }
 
-func pruneOldArchives(archiver string) {
-	keep := appConf.ConfigSchema.KeepArchives
+func PruneOldArchives(archiver string) {
+	keep := AppConf.ConfigSchema.KeepArchives
 	if keep <= 0 {
 		return
 	}
@@ -390,7 +390,7 @@ func pruneOldArchives(archiver string) {
 		pattern = "mnemosync-backup-*.tar.gz"
 	}
 
-	matches, err := filepath.Glob(filepath.Join(repoPath(), pattern))
+	matches, err := filepath.Glob(filepath.Join(RepoPath(), pattern))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not list archives: %v\n", err)
 		return
@@ -411,8 +411,8 @@ func pruneOldArchives(archiver string) {
 	}
 }
 
-func ensureLfsTracking(archivePath string) error {
-	threshold := appConf.ConfigSchema.LfsThresholdMb
+func EnsureLfsTracking(archivePath string) error {
+	threshold := AppConf.ConfigSchema.LfsThresholdMb
 	if threshold <= 0 {
 		return nil
 	}
@@ -442,7 +442,7 @@ func ensureLfsTracking(archivePath string) error {
 
 	fmt.Printf("Archive exceeds %d MB threshold, configuring Git LFS for '%s'...\n", threshold, pattern)
 
-	attrPath := filepath.Join(repoPath(), ".gitattributes")
+	attrPath := filepath.Join(RepoPath(), ".gitattributes")
 	content, err := os.ReadFile(attrPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -458,7 +458,7 @@ func ensureLfsTracking(archivePath string) error {
 	}
 
 	cmd := exec.Command(lfsPath, "track", pattern)
-	cmd.Dir = repoPath()
+	cmd.Dir = RepoPath()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -469,34 +469,34 @@ func ensureLfsTracking(archivePath string) error {
 	return nil
 }
 
-func cleanupStaging(stagingDir string) {
-	entries, err := os.ReadDir(stagingDir)
+func CleanupStaging(StagingDir string) {
+	entries, err := os.ReadDir(StagingDir)
 	if err != nil {
 		return
 	}
 	for _, e := range entries {
-		path := filepath.Join(stagingDir, e.Name())
+		path := filepath.Join(StagingDir, e.Name())
 		_ = os.RemoveAll(path)
 	}
 }
 
-func ensureInitialized() error {
-	if appConf == nil || !appConf.ConfigSchema.IsInit {
+func EnsureInitialized() error {
+	if AppConf == nil || !AppConf.ConfigSchema.IsInit {
 		return fmt.Errorf("configuration not initialized. Run 'mns init' first")
 	}
-	if appConf.ConfigSchema.RepoPath == "" {
+	if AppConf.ConfigSchema.RepoPath == "" {
 		return fmt.Errorf("repository path not set in configuration")
 	}
-	if _, err := os.Stat(appConf.ConfigSchema.RepoPath); os.IsNotExist(err) {
-		return fmt.Errorf("repository path '%s' does not exist", appConf.ConfigSchema.RepoPath)
+	if _, err := os.Stat(AppConf.ConfigSchema.RepoPath); os.IsNotExist(err) {
+		return fmt.Errorf("repository path '%s' does not exist", AppConf.ConfigSchema.RepoPath)
 	}
 	return nil
 }
 
-func selectDirs(args []string) []config.DirData {
+func SelectDirs(args []string) []config.DirData {
 	if len(args) == 0 {
-		result := make([]config.DirData, 0, len(dataStore.TrackedDirs))
-		for _, entry := range dataStore.TrackedDirs {
+		result := make([]config.DirData, 0, len(DataStore.TrackedDirs))
+		for _, entry := range DataStore.TrackedDirs {
 			result = append(result, entry)
 		}
 		return result
@@ -510,7 +510,7 @@ func selectDirs(args []string) []config.DirData {
 		}
 		seen[arg] = true
 
-		_, entry, found := resolveEntry(arg)
+		_, entry, found := ResolveEntry(arg)
 		if !found {
 			fmt.Fprintf(os.Stderr, "Warning: no tracked directory matches '%s', skipping.\n", arg)
 			continue
@@ -521,11 +521,11 @@ func selectDirs(args []string) []config.DirData {
 }
 
 func init() {
-	rootCmd.AddCommand(stageCmd)
-	rootCmd.AddCommand(unstageCmd)
-	rootCmd.AddCommand(statusCmd)
-	rootCmd.AddCommand(logCmd)
-	rootCmd.AddCommand(pushCmd)
+	RootCmd.AddCommand(stageCmd)
+	RootCmd.AddCommand(unstageCmd)
+	RootCmd.AddCommand(statusCmd)
+	RootCmd.AddCommand(logCmd)
+	RootCmd.AddCommand(pushCmd)
 
 	logCmd.Flags().IntP("limit", "n", 0, "Limit the number of log entries")
 	pushCmd.Flags().Bool("no-push", false, "Create archive and commit without pushing")

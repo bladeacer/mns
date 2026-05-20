@@ -54,7 +54,7 @@ func LoadDataStore() (*DataStore, error) {
 		return nil, fmt.Errorf("error unmarshalling JSON data from %s. File may be corrupt: %w", dbPath, err)
 	}
 
-	if err := validateDataStoreSchema(tempDS); err != nil {
+	if err := ValidateDataStoreSchema(tempDS); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: Database at %s failed schema validation: %v. Overwriting with default data.\n", dbPath, err)
 
 		tempDS = defaultDS
@@ -126,7 +126,7 @@ func (ds *DataStore) SaveData(targetPath string) error {
 	return nil
 }
 
-func validateDataStoreSchema(ds *DataStore) error {
+func ValidateDataStoreSchema(ds *DataStore) error {
 	if ds.CurrentId < 0 {
 		return fmt.Errorf("current_id cannot be negative; found: %d", ds.CurrentId)
 	}

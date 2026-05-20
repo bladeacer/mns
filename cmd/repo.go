@@ -19,13 +19,13 @@ var repoGetCmd = &cobra.Command{
 	Short: "Prints the configured repository path to stdout",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Check if the config is initialized
-		if appConf == nil || !appConf.ConfigSchema.IsInit {
+		if AppConf == nil || !AppConf.ConfigSchema.IsInit {
 			configPath := fileio.ResolveConfigPath()
 			fmt.Printf("Error: Configuration file not found or not initialized at expected path:\n%s\nRun mns init to start.\n", configPath)
 			os.Exit(1)
 		}
 
-		repoPath := appConf.ConfigSchema.RepoPath
+		repoPath := AppConf.ConfigSchema.RepoPath
 
 		if repoPath == "" {
 			fmt.Println("Error: Repository path is not set in the configuration file.")
@@ -41,7 +41,7 @@ var repoOpenCmd = &cobra.Command{
 	Short: "Opens the configuration file with the user's $EDITOR",
 	Run: func(cmd *cobra.Command, args []string) {
 		configPath := fileio.ResolveConfigPath()
-		isInit := appConf.ConfigSchema.IsInit
+		isInit := AppConf.ConfigSchema.IsInit
 		editor := os.Getenv("EDITOR")
 
 		if editor == "" {
@@ -68,7 +68,7 @@ var repoOpenCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(repoCmd)
+	RootCmd.AddCommand(repoCmd)
 
 	repoCmd.AddCommand(repoGetCmd)
 	repoCmd.AddCommand(repoOpenCmd)

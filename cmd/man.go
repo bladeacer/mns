@@ -19,15 +19,15 @@ var manCmd = &cobra.Command{
 Does not persist it to a file.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// Use a better name to avoid conflict with the standard man command
-		displayManPage()
+		DisplayManPage()
 	},
 }
 
 // TODO: Persist the generated man page to local man-db once it is called,
 // add a flag to force persisting to local man-db
 
-func displayManPage() {
-	manPage, err := mcobra.NewManPage(1, rootCmd)
+func DisplayManPage() {
+	manPage, err := mcobra.NewManPage(1, RootCmd)
 	if err != nil {
 		panic(err)
 	}
@@ -89,5 +89,5 @@ func displayManPage() {
 }
 
 func init() {
-	rootCmd.AddCommand(manCmd)
+	RootCmd.AddCommand(manCmd)
 }

@@ -1,14 +1,16 @@
-package fileio
+package fileio_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/bladeacer/mmsync/internal/fileio"
 )
 
 func TestCopyFile_SrcNotExist(t *testing.T) {
 	dir := t.TempDir()
-	err := copyFile(filepath.Join(dir, "nonexistent"), filepath.Join(dir, "dest"))
+	err := fileio.CopyFile(filepath.Join(dir, "nonexistent"), filepath.Join(dir, "dest"))
 	if err == nil {
 		t.Error("expected error when source does not exist")
 	}
@@ -27,7 +29,7 @@ func TestCopyFile_DstDirNotWritable(t *testing.T) {
 	}
 	defer func() { _ = os.Chmod(subdir, 0755) }()
 
-	err := copyFile(srcPath, filepath.Join(subdir, "dest.txt"))
+	err := fileio.CopyFile(srcPath, filepath.Join(subdir, "dest.txt"))
 	if err == nil {
 		t.Error("expected error when dest dir is not writable")
 	}

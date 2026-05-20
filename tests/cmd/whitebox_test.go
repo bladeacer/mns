@@ -137,7 +137,7 @@ func TestRepoPath(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	if got := cmd.RepoPathFn(); got != dir {
+	if got := cmd.RepoPath(); got != dir {
 		t.Errorf("expected '%s', got '%s'", dir, got)
 	}
 }

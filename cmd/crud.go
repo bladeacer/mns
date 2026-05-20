@@ -15,13 +15,13 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all tracked directories",
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(dataStore.TrackedDirs) == 0 {
+		if len(DataStore.TrackedDirs) == 0 {
 			fmt.Println("No tracked directories. Use 'mns add <path>' to add one.")
 			return
 		}
 
-		ids := make([]string, 0, len(dataStore.TrackedDirs))
-		for id := range dataStore.TrackedDirs {
+		ids := make([]string, 0, len(DataStore.TrackedDirs))
+		for id := range DataStore.TrackedDirs {
 			ids = append(ids, id)
 		}
 		sort.Slice(ids, func(i, j int) bool {
@@ -31,7 +31,7 @@ var listCmd = &cobra.Command{
 
 		fmt.Println("Tracked directories:")
 		for _, id := range ids {
-			entry := dataStore.TrackedDirs[id]
+			entry := DataStore.TrackedDirs[id]
 			fmt.Printf("  %s | %-20s | %s\n", id, entry.Alias, entry.TargetPath)
 		}
 	},
@@ -43,7 +43,7 @@ var rmCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		query := args[0]
-		id, entry, found := resolveEntry(query)
+		id, entry, found := ResolveEntry(query)
 		if !found {
 			fmt.Fprintf(os.Stderr, "Error: no tracked directory matches '%s'\n", query)
 			os.Exit(1)
@@ -51,13 +51,13 @@ var rmCmd = &cobra.Command{
 
 		fmt.Printf("Removing:\n  ID: %s | %s | %s\n", id, entry.Alias, entry.TargetPath)
 
-		if !dataStore.DeleteDir(id) {
+		if !DataStore.DeleteDir(id) {
 			fmt.Fprintf(os.Stderr, "Error: failed to remove entry '%s'\n", query)
 			os.Exit(1)
 		}
 
 		dbPath := fileio.ResolveDbPath()
-		if err := dataStore.SaveData(dbPath); err != nil {
+		if err := DataStore.SaveData(dbPath); err != nil {
 			fmt.Fprintf(os.Stderr, "Error saving database: %v\n", err)
 			os.Exit(1)
 		}
@@ -69,12 +69,12 @@ var clearCmd = &cobra.Command{
 	Use:   "clear",
 	Short: "Remove all tracked directories (with confirmation)",
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(dataStore.TrackedDirs) == 0 {
+		if len(DataStore.TrackedDirs) == 0 {
 			fmt.Println("No tracked directories to clear.")
 			return
 		}
 
-		fmt.Printf("Warning: This will remove all %d tracked directories.\n", len(dataStore.TrackedDirs))
+		fmt.Printf("Warning: This will remove all %d tracked directories.\n", len(DataStore.TrackedDirs))
 		fmt.Print("Are you sure? [y/N]: ")
 
 		var response string
@@ -84,9 +84,9 @@ var clearCmd = &cobra.Command{
 			return
 		}
 
-		dataStore.TrackedDirs = make(map[string]config.DirData)
+		DataStore.TrackedDirs = make(map[string]config.DirData)
 		dbPath := fileio.ResolveDbPath()
-		if err := dataStore.SaveData(dbPath); err != nil {
+		if err := DataStore.SaveData(dbPath); err != nil {
 			fmt.Fprintf(os.Stderr, "Error saving database: %v\n", err)
 			os.Exit(1)
 		}
@@ -102,8 +102,8 @@ var searchCmd = &cobra.Command{
 		query := strings.ToLower(args[0])
 		found := false
 
-		ids := make([]string, 0, len(dataStore.TrackedDirs))
-		for id := range dataStore.TrackedDirs {
+		ids := make([]string, 0, len(DataStore.TrackedDirs))
+		for id := range DataStore.TrackedDirs {
 			ids = append(ids, id)
 		}
 		sort.Slice(ids, func(i, j int) bool {
@@ -112,7 +112,7 @@ var searchCmd = &cobra.Command{
 		})
 
 		for _, id := range ids {
-			entry := dataStore.TrackedDirs[id]
+			entry := DataStore.TrackedDirs[id]
 			if strings.Contains(strings.ToLower(entry.Alias), query) ||
 				strings.Contains(strings.ToLower(entry.TargetPath), query) ||
 				strings.Contains(id, query) {
@@ -151,14 +151,14 @@ Examples:
 			os.Exit(1)
 		}
 
-		id, entry, found := resolveEntry(query)
+		id, entry, found := ResolveEntry(query)
 		if !found {
 			fmt.Fprintf(os.Stderr, "Error: no tracked directory matches '%s'\n", query)
 			os.Exit(1)
 		}
 
 		if newPath != "" {
-			resolved, err := resolveAndValidatePath(newPath)
+			resolved, err := ResolveAndValidatePath(newPath)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 				os.Exit(1)
@@ -167,16 +167,16 @@ Examples:
 		}
 
 		if newAlias != "" {
-			if _, _, exists := dataStore.FindDirByAlias(newAlias); exists {
+			if _, _, exists := DataStore.FindDirByAlias(newAlias); exists {
 				fmt.Fprintf(os.Stderr, "Error: alias '%s' is already in use.\n", newAlias)
 				os.Exit(1)
 			}
 			entry.Alias = newAlias
 		}
 
-		dataStore.TrackedDirs[id] = entry
+		DataStore.TrackedDirs[id] = entry
 		dbPath := fileio.ResolveDbPath()
-		if err := dataStore.SaveData(dbPath); err != nil {
+		if err := DataStore.SaveData(dbPath); err != nil {
 			fmt.Fprintf(os.Stderr, "Error saving database: %v\n", err)
 			os.Exit(1)
 		}
@@ -186,16 +186,16 @@ Examples:
 	},
 }
 
-func resolveEntry(query string) (string, config.DirData, bool) {
-	if entry, ok := dataStore.TrackedDirs[query]; ok {
+func ResolveEntry(query string) (string, config.DirData, bool) {
+	if entry, ok := DataStore.TrackedDirs[query]; ok {
 		return query, entry, true
 	}
 
-	if id, entry, ok := dataStore.FindDirByAlias(query); ok {
+	if id, entry, ok := DataStore.FindDirByAlias(query); ok {
 		return id, entry, true
 	}
 
-	if id, entry, ok := dataStore.FindDirByPath(query); ok {
+	if id, entry, ok := DataStore.FindDirByPath(query); ok {
 		return id, entry, true
 	}
 
@@ -203,11 +203,11 @@ func resolveEntry(query string) (string, config.DirData, bool) {
 }
 
 func init() {
-	rootCmd.AddCommand(listCmd)
-	rootCmd.AddCommand(rmCmd)
-	rootCmd.AddCommand(clearCmd)
-	rootCmd.AddCommand(searchCmd)
-	rootCmd.AddCommand(changeCmd)
+	RootCmd.AddCommand(listCmd)
+	RootCmd.AddCommand(rmCmd)
+	RootCmd.AddCommand(clearCmd)
+	RootCmd.AddCommand(searchCmd)
+	RootCmd.AddCommand(changeCmd)
 
 	changeCmd.Flags().String("path", "", "New path for the tracked directory")
 	changeCmd.Flags().String("alias", "", "New alias for the tracked directory")

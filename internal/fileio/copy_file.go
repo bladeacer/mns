@@ -9,7 +9,7 @@ import (
 
 // Optimise this operation to just move?
 
-func copyFile(src, dst string) error {
+func CopyFile(src, dst string) error {
 	sourceFile, err := os.Open(src)
 	if err != nil {
 		return fmt.Errorf("failed to open source file %s: %w", src, err)
@@ -65,12 +65,12 @@ func MigrateConfigData(newConfigPath string) error {
 
 		fmt.Fprintf(os.Stderr, "Migrating configuration files from %s to %s...\n", oldConfigDir, newConfigDir)
 
-		if err := copyFile(oldConfigFile, newConfigPath); err != nil {
+		if err := CopyFile(oldConfigFile, newConfigPath); err != nil {
 			return fmt.Errorf("failed to copy configuration file: %w", err)
 		}
 
 		if _, err := os.Stat(oldDbFile); err == nil {
-			if err := copyFile(oldDbFile, newDbFile); err != nil {
+			if err := CopyFile(oldDbFile, newDbFile); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: Failed to copy database file: %v\n", err)
 			}
 		}

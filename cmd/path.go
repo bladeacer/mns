@@ -15,7 +15,7 @@ var configCmd = &cobra.Command{
 	Long:  "Provides commands to manage the application's configuration file.\nSet the configuration path either with $MMSYNC_CONF environment variable in your shell configuration file e.g. bashrc or with mns init.\nConfiguration directory should only be under your home directory.\nRestart your shell when changing or clearing the environment variable.",
 	Run: func(cmd *cobra.Command, args []string) {
 		configPath := fileio.ResolveConfigPath()
-		isInit := appConf.ConfigSchema.IsInit
+		isInit := AppConf.ConfigSchema.IsInit
 
 		if !isInit {
 			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mns init to start.\n", configPath)
@@ -31,7 +31,7 @@ var getCmd = &cobra.Command{
 	Long:  "Prints the content of the mnemosync configuration file to the standard output. If the file doesn't exist, it prints a message.",
 	Run: func(cmd *cobra.Command, args []string) {
 		configPath := fileio.ResolveConfigPath()
-		isInit := appConf.ConfigSchema.IsInit
+		isInit := AppConf.ConfigSchema.IsInit
 
 		if !isInit {
 			fmt.Printf("Error: Configuration file not found at expected path:\n%s\nRun mns init to start.\n", configPath)
@@ -54,7 +54,7 @@ var openCmd = &cobra.Command{
 	Short: "Opens the configuration file with the user's $EDITOR",
 	Run: func(cmd *cobra.Command, args []string) {
 		configPath := fileio.ResolveConfigPath()
-		isInit := appConf.ConfigSchema.IsInit
+		isInit := AppConf.ConfigSchema.IsInit
 		editor := os.Getenv("EDITOR")
 
 		if editor == "" {
@@ -81,7 +81,7 @@ var openCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(configCmd)
+	RootCmd.AddCommand(configCmd)
 	configCmd.AddCommand(getCmd)
 	configCmd.AddCommand(openCmd)
 }

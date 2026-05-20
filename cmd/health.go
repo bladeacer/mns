@@ -18,7 +18,7 @@ Checks if the required system binaries are installed
 
 Also checks if the mnemosync configuration files have been created.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		RunHealthCheck(appConf, true)
+		RunHealthCheck(AppConf, true)
 	},
 }
 
@@ -46,7 +46,7 @@ func RunHealthCheck(cfg *config.MnemoConf, shouldPrintOutput bool) string {
 	}
 
 	for _, dep := range deps {
-		if err := checkBinary(dep.name, dep.isOptional, shouldPrintOutput); err != "" {
+		if err := CheckBinary(dep.name, dep.isOptional, shouldPrintOutput); err != "" {
 			errStrBuilder.WriteString(err)
 		}
 	}
@@ -145,7 +145,7 @@ func RunHealthCheck(cfg *config.MnemoConf, shouldPrintOutput bool) string {
 	return errStrBuilder.String()
 }
 
-func checkBinary(binaryName string, isOptional bool, shouldPrintOutput bool) string {
+func CheckBinary(binaryName string, isOptional bool, shouldPrintOutput bool) string {
 	result := healthcheck.CheckBinary(binaryName)
 
 	if !result.Found {
@@ -189,5 +189,5 @@ func checkBinary(binaryName string, isOptional bool, shouldPrintOutput bool) str
 }
 
 func init() {
-	rootCmd.AddCommand(healthCmd)
+	RootCmd.AddCommand(healthCmd)
 }

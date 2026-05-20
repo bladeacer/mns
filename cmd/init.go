@@ -50,7 +50,7 @@ var initCmd = &cobra.Command{
 		var err error
 
 		if repoPathFlag != "" {
-			finalRepoPath, err = processRepoPath(repoPathFlag)
+			finalRepoPath, err = ProcessRepoPath(repoPathFlag)
 		} else {
 			finalRepoPath, err = getRepoPathInteractive()
 		}
@@ -73,7 +73,7 @@ var initCmd = &cobra.Command{
 			fmt.Printf("\nDatabase created at: '%s'.\n", dbPath)
 
 			repoPath := finalRepoPath
-			if err := ensureGitignoreInDir(repoPath); err != nil {
+			if err := EnsureGitignoreInDir(repoPath); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not ensure .mnemosync is gitignored: %v\n", err)
 			}
 		} else {
@@ -84,11 +84,11 @@ var initCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(initCmd)
+	RootCmd.AddCommand(initCmd)
 	initCmd.Flags().StringVarP(&repoPathFlag, "repo-path", "r", "", "Specify the path to the target Git repository.")
 }
 
-func pathCompleter(line string) []string {
+func PathCompleter(line string) []string {
 	var homeDir string
 	var err error
 	homePrefix := strings.HasPrefix(line, "~")
@@ -146,7 +146,7 @@ func pathCompleter(line string) []string {
 	return suggestions
 }
 
-func processRepoPath(inputPath string) (string, error) {
+func ProcessRepoPath(inputPath string) (string, error) {
 	if strings.HasPrefix(inputPath, "~") {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
@@ -184,7 +184,7 @@ func getRepoPathInteractive() (string, error) {
 	line := liner.NewLiner()
 	defer func() { _ = line.Close() }()
 
-	line.SetCompleter(pathCompleter)
+	line.SetCompleter(PathCompleter)
 	line.SetTabCompletionStyle(liner.TabPrints)
 	line.SetCtrlCAborts(true)
 
@@ -214,7 +214,7 @@ func getRepoPathInteractive() (string, error) {
 
 		line.AppendHistory(inputPath)
 
-		finalRepoPath, err := processRepoPath(inputPath)
+		finalRepoPath, err := ProcessRepoPath(inputPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			continue
