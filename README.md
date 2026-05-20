@@ -23,7 +23,18 @@ Download the latest binary for your platform from the
 [releases page](https://github.com/bladeacer/mmsync/releases), extract it, and
 place it in your `$PATH`.
 
-**Always backup your files before using mmsync**.
+Pre-built binaries are available for:
+
+| OS | Architectures |
+| --- | --- |
+| Linux | `amd64` (x86-64), `arm64` (ARM 64-bit) |
+| macOS | `amd64` (Intel), `arm64` (Apple Silicon) |
+| Windows | `amd64` (x86-64), `arm64` (ARM 64-bit) |
+
+All binaries are fully static (compiled with `CGO_ENABLED=0`) with no
+C runtime dependencies.
+
+**Always backup your files before using mns**.
 
 ```bash
 mns
@@ -134,7 +145,7 @@ The configuration file is created at `~/.config/mmsync/config.yaml` (or
 ```bash
 git clone https://github.com/bladeacer/mmsync
 cd mmsync
-make build       # builds the mns binary
+make build       # builds the mns binary (CGO_ENABLED=0, fully static)
 make lint        # run golangci-lint
 make test        # run all tests
 make gowatch     # hot-reload during active development
