@@ -15,6 +15,8 @@ type ConfigSchema struct {
 	RespectGitignore bool   `yaml:"respect_gitignore"`
 	HistLimitDays    int    `yaml:"hist_limit_days"`
 	HistLimitSizeMb  int64  `yaml:"hist_limit_size_mb"`
+	KeepArchives     int    `yaml:"keep_archives"`
+	LfsThresholdMb   int64  `yaml:"lfs_threshold_mb"`
 }
 
 type MnemoConf struct {
@@ -35,6 +37,8 @@ func GetMnemoConf() *MnemoConf {
 			RespectGitignore: true,
 			HistLimitDays:    7,
 			HistLimitSizeMb:  1024,
+			KeepArchives:     5,
+			LfsThresholdMb:   5,
 		},
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -245,6 +246,12 @@ Examples:
 		archiveInfo, _ := os.Stat(archivePath)
 		fmt.Printf("Created archive: %s (%d bytes)\n", archiveName, archiveInfo.Size())
 
+		pruneOldArchives(archiver)
+
+		if err := ensureLfsTracking(archivePath); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not configure Git LFS: %v\n", err)
+		}
+
 		fmt.Println("Running git add -A...")
 		if err := runGit("add", "-A"); err != nil {
 			os.Exit(1)
@@ -374,6 +381,99 @@ func pruneStaging() {
 			}
 		}
 	}
+}
+
+func pruneOldArchives(archiver string) {
+	keep := appConf.ConfigSchema.KeepArchives
+	if keep <= 0 {
+		return
+	}
+
+	var pattern string
+	switch archiver {
+	case "zip":
+		pattern = "mnemosync-backup-*.zip"
+	default:
+		pattern = "mnemosync-backup-*.tar.gz"
+	}
+
+	matches, err := filepath.Glob(filepath.Join(repoPath(), pattern))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not list archives: %v\n", err)
+		return
+	}
+
+	sort.Strings(matches)
+
+	if len(matches) <= keep {
+		return
+	}
+
+	toRemove := matches[:len(matches)-keep]
+	for _, path := range toRemove {
+		fmt.Printf("Removing old archive: %s\n", filepath.Base(path))
+		if err := os.Remove(path); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not remove old archive '%s': %v\n", path, err)
+		}
+	}
+}
+
+func ensureLfsTracking(archivePath string) error {
+	threshold := appConf.ConfigSchema.LfsThresholdMb
+	if threshold <= 0 {
+		return nil
+	}
+
+	info, err := os.Stat(archivePath)
+	if err != nil {
+		return err
+	}
+
+	if info.Size() < threshold*1024*1024 {
+		return nil
+	}
+
+	lfsPath, err := exec.LookPath("git-lfs")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: archive is %d bytes but git-lfs is not installed\n", info.Size())
+		return nil
+	}
+
+	ext := filepath.Ext(archivePath)
+	var pattern string
+	if ext == ".zip" {
+		pattern = "mnemosync-backup-*.zip"
+	} else {
+		pattern = "mnemosync-backup-*.tar.gz"
+	}
+
+	fmt.Printf("Archive exceeds %d MB threshold, configuring Git LFS for '%s'...\n", threshold, pattern)
+
+	attrPath := filepath.Join(repoPath(), ".gitattributes")
+	content, err := os.ReadFile(attrPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("reading .gitattributes: %w", err)
+		}
+		content = []byte{}
+	}
+
+	for _, line := range strings.Split(string(content), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), pattern) {
+			return nil
+		}
+	}
+
+	cmd := exec.Command(lfsPath, "track", pattern)
+	cmd.Dir = repoPath()
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("git lfs track failed: %w", err)
+	}
+
+	fmt.Printf("Git LFS configured for '%s'\n", pattern)
+	return nil
 }
 
 func cleanupStaging(stagingDir string) {

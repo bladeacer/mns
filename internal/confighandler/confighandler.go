@@ -103,5 +103,15 @@ func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf)
 		warnings = append(warnings, fmt.Errorf("invalid HistLimitSizeMb: %d. Reset to default: %d", loadedSchema.HistLimitSizeMb, defaultSchema.HistLimitSizeMb))
 	}
 
+	if loadedSchema.KeepArchives <= 0 {
+		loadedSchema.KeepArchives = defaultSchema.KeepArchives
+		warnings = append(warnings, fmt.Errorf("invalid KeepArchives: %d. Reset to default: %d", loadedSchema.KeepArchives, defaultSchema.KeepArchives))
+	}
+
+	if loadedSchema.LfsThresholdMb <= 0 {
+		loadedSchema.LfsThresholdMb = defaultSchema.LfsThresholdMb
+		warnings = append(warnings, fmt.Errorf("invalid LfsThresholdMb: %d. Reset to default: %d", loadedSchema.LfsThresholdMb, defaultSchema.LfsThresholdMb))
+	}
+
 	return warnings
 }
