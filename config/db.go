@@ -35,7 +35,42 @@ func GetDataStore() *DataStore {
 		StagingHistory: make([]StagingHistoryEntry, 0),
 	}
 }
+func migrateDbPath() error {
+	newPath := fileio.ResolveDbPath()
+	if _, err := os.Stat(newPath); err == nil {
+		return nil
+	}
+
+	oldPath := fileio.LegacyDbPath()
+	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("error checking legacy database path %s: %w", oldPath, err)
+	}
+
+	fmt.Fprintf(os.Stderr, "Migrating database from %s to %s...\n", oldPath, newPath)
+
+	if err := os.MkdirAll(filepath.Dir(newPath), 0755); err != nil {
+		return fmt.Errorf("failed to create directory for new database location: %w", err)
+	}
+
+	if err := fileio.CopyFile(oldPath, newPath); err != nil {
+		return fmt.Errorf("failed to copy database to new location: %w", err)
+	}
+
+	if err := os.Remove(oldPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to remove old database file %s: %v\n", oldPath, err)
+	}
+
+	fmt.Fprintf(os.Stderr, "Database migration complete.\n")
+	return nil
+}
+
 func LoadDataStore() (*DataStore, error) {
+	if err := migrateDbPath(); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: database path migration failed: %v\n", err)
+	}
+
 	dbPath := fileio.ResolveDbPath()
 
 	defaultDS := GetDataStore()
@@ -115,17 +150,8 @@ func (ds *DataStore) SaveData(targetPath string) error {
 		return fmt.Errorf("failed to marshal DataStore to JSON: %w", err)
 	}
 
-	dir := filepath.Dir(targetPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory structure for %s: %w", targetPath, err)
-	}
-
-	tmpPath := targetPath + ".tmp"
-	if err := os.WriteFile(tmpPath, jsonData, 0644); err != nil {
-		return fmt.Errorf("failed to write JSON data to temp file %s: %w", tmpPath, err)
-	}
-	if err := os.Rename(tmpPath, targetPath); err != nil {
-		return fmt.Errorf("failed to rename temp file %s to %s: %w", tmpPath, targetPath, err)
+	if err := fileio.AtomicWriteFile(targetPath, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to save database to %s: %w", targetPath, err)
 	}
 	return nil
 }

@@ -27,7 +27,10 @@ var knownSchemaFields = map[string]bool{
 
 func LoadConfig() (*config.MnemoConf, error) {
 	configPath := fileio.ResolveConfigPath()
+	return LoadConfigWithPath(configPath)
+}
 
+func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 	if err := fileio.MigrateConfigData(configPath); err != nil {
 		return nil, fmt.Errorf("configuration migration failed: %w", err)
 	}

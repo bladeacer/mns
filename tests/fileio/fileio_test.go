@@ -32,8 +32,8 @@ func TestResolveConfigPath_Default(t *testing.T) {
 	if !strings.HasSuffix(path, "config.yaml") {
 		t.Errorf("expected path to end with 'config.yaml', got '%s'", path)
 	}
-	if !strings.Contains(path, ".config/mmsync") {
-		t.Errorf("expected path to contain '.config/mmsync', got '%s'", path)
+	if !strings.HasSuffix(path, "mmsync/config.yaml") {
+		t.Errorf("expected path to end with 'mmsync/config.yaml', got '%s'", path)
 	}
 }
 

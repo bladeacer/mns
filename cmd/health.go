@@ -123,12 +123,8 @@ func RunHealthCheck(cfg *config.MnemoConf, shouldPrintOutput bool) string {
 		if shouldPrintOutput {
 			fmt.Println(msg)
 		}
-	} else if shouldPrintOutput {
-		fmt.Printf("  [OK] %s\n", dbPath)
-	}
-
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		msg := fmt.Sprintf("  [..] %s (not found on disk)", dbPath)
+	} else if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		msg := fmt.Sprintf("  [..] %s (not found on disk — first backup will create it)", dbPath)
 		statusBuilder.WriteString(msg)
 		statusBuilder.WriteString("\n")
 		if shouldPrintOutput {

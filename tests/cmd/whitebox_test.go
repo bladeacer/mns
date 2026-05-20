@@ -2,6 +2,7 @@ package cmd_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -1546,4 +1547,76 @@ func TestPruneOldArchives_ZipArchiver(t *testing.T) {
 	}
 
 	cmd.PruneOldArchives("zip")
+}
+
+func TestValidateConfig_ValidFile(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	yamlContent := fmt.Sprintf(`config_schema:
+  config_path: "%s"
+  app_version: "0.1.0"
+  is_init: true
+  repo_path: "%s"
+  db_path: "%s"
+  archiver: tar
+  commit_fmt: "mnemosync archive 2006-01-02"
+  respect_gitignore: true
+  hist_limit_days: 7
+  hist_limit_size_mb: 1024
+  keep_archives: 5
+  lfs_threshold_mb: 5
+`, configPath, dir, filepath.Join(dir, "mmsync-state.json"))
+
+	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	code := cmd.ValidateConfigAndDataStore(configPath)
+	if code != 0 {
+		t.Errorf("expected exit code 0, got %d", code)
+	}
+}
+
+func TestValidateConfig_NotInit(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "config.yaml")
+	yamlContent := fmt.Sprintf(`config_schema:
+  config_path: "%s"
+  app_version: "0.1.0"
+  is_init: false
+  repo_path: "%s"
+  db_path: "%s"
+  archiver: tar
+  commit_fmt: "mnemosync archive 2006-01-02"
+  respect_gitignore: true
+  hist_limit_days: 7
+  hist_limit_size_mb: 1024
+  keep_archives: 5
+  lfs_threshold_mb: 5
+`, configPath, dir, filepath.Join(dir, "mmsync-state.json"))
+
+	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	code := cmd.ValidateConfigAndDataStore(configPath)
+	if code != 0 {
+		t.Errorf("expected exit code 0 for uninitialized config (valid but not init), got %d", code)
+	}
+}
+
+func TestValidateConfig_MissingFile(t *testing.T) {
+	dir := t.TempDir()
+	configPath := filepath.Join(dir, "nonexistent.yaml")
+
+	code := cmd.ValidateConfigAndDataStore(configPath)
+	if code != 0 {
+		t.Errorf("expected exit code 0 for missing config file, got %d", code)
+	}
 }

@@ -39,12 +39,7 @@ func CopyFile(src, dst string) error {
 
 // Copies configuration and database files when new MMSYNC_CONF set
 func MigrateConfigData(newConfigPath string) error {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil
-	}
-
-	oldConfigDir := filepath.Join(homeDir, DefaultConfigDir)
+	oldConfigDir := LegacyConfigDirPath()
 	oldConfigFile := filepath.Join(oldConfigDir, DefaultConfigFile)
 	oldDbFile := filepath.Join(oldConfigDir, DefaultDbFile)
 

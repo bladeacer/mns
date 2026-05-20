@@ -97,6 +97,7 @@ the progress tracker.
 | `mns repo get` | Print the configured repository path | Done |
 | `mns repo open` | Open the configuration file in `$EDITOR` | Done |
 | `mns health` | Check required binaries (`git`, `rsync`, `tar`, `zip`) and config | Done |
+| `mns validate [--config <path>]` | Load and validate configuration (and database); useful for testing that schema healing doesn't corrupt existing configs | Done |
 | `mns version` | Print the version of mnemosync | Done |
 | `mns man` | Generate, persist to man-db (`~/.local/share/man/man1/mns.1`), and display the manual page | Done |
 | `mns man --force` | Force-overwrite the persisted man page even if unchanged | Done |
@@ -131,8 +132,24 @@ mns push                         # archive staging dir, commit, push
 
 ## Configuration
 
-The configuration file is created at `~/.config/mmsync/config.yaml` (or
-`$MMSYNC_CONF` if set) after running `mns init`. Default values:
+The configuration file and database are stored at platform-specific
+locations using [XDG Base Directory](https://specifications.freedesktop.org/basedir-spec/latest/)
+conventions (via `os.UserConfigDir()`):
+
+| Platform | Config (`config.yaml`) | Database (`mmsync-state.json`) |
+| --- | --- | --- |
+| Linux | `$XDG_CONFIG_HOME/mmsync/` → `~/.config/mmsync/` | `$XDG_DATA_HOME/mmsync/` → `~/.local/share/mmsync/` |
+| macOS | `~/Library/Application Support/mmsync/` | `~/Library/Application Support/mmsync/` |
+| Windows | `%AppData%\mmsync\` | `%AppData%\mmsync\` |
+
+Setting `$MMSYNC_CONF` to a directory overrides both paths — config and
+database are placed together under that directory.
+
+On Linux, the config and database live in separate XDG directories
+(`XDG_CONFIG_HOME` vs `XDG_DATA_HOME`); on macOS and Windows they
+share the same application data directory.
+
+Default values:
 
 | Field | Default | Description |
 | --- | --- | --- |

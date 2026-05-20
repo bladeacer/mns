@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bladeacer/mns/config"
 	"github.com/bladeacer/mns/internal/confighandler"
 )
 
@@ -274,6 +275,57 @@ func TestLoadConfig_ReadError(t *testing.T) {
 		_, err := confighandler.LoadConfig()
 		if err == nil {
 			t.Error("expected error when config file is not readable")
+		}
+	})
+}
+
+func TestLoadConfig_HealingDoesNotBreakValidConfig(t *testing.T) {
+	withFakeHome(t, func(homeDir string) {
+		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
+		yamlContent := `config_schema:
+  config_path: "` + configPath + `"
+  app_version: "0.1.0"
+  is_init: true
+  repo_path: "` + homeDir + `"
+  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  archiver: tar
+  commit_fmt: "mnemosync archive 2006-01-02"
+  respect_gitignore: true
+  hist_limit_days: 7
+  hist_limit_size_mb: 1024
+  keep_archives: 5
+  lfs_threshold_mb: 5
+`
+		writeConfig(t, homeDir, yamlContent)
+
+		// Load config multiple times — healing should not corrupt the file
+		var prevCfg *config.MnemoConf
+		for i := 0; i < 5; i++ {
+			cfg, err := confighandler.LoadConfig()
+			if err != nil {
+				t.Fatalf("iteration %d: unexpected error: %v", i, err)
+			}
+			if prevCfg != nil {
+				if cfg.ConfigSchema.AppVersion != prevCfg.ConfigSchema.AppVersion {
+					t.Errorf("iteration %d: AppVersion changed from '%s' to '%s'", i, prevCfg.ConfigSchema.AppVersion, cfg.ConfigSchema.AppVersion)
+				}
+				if cfg.ConfigSchema.IsInit != prevCfg.ConfigSchema.IsInit {
+					t.Errorf("iteration %d: IsInit changed from %t to %t", i, prevCfg.ConfigSchema.IsInit, cfg.ConfigSchema.IsInit)
+				}
+				if cfg.ConfigSchema.RepoPath != prevCfg.ConfigSchema.RepoPath {
+					t.Errorf("iteration %d: RepoPath changed from '%s' to '%s'", i, prevCfg.ConfigSchema.RepoPath, cfg.ConfigSchema.RepoPath)
+				}
+				if cfg.ConfigSchema.DbPath != prevCfg.ConfigSchema.DbPath {
+					t.Errorf("iteration %d: DbPath changed from '%s' to '%s'", i, prevCfg.ConfigSchema.DbPath, cfg.ConfigSchema.DbPath)
+				}
+				if cfg.ConfigSchema.KeepArchives != prevCfg.ConfigSchema.KeepArchives {
+					t.Errorf("iteration %d: KeepArchives changed from %d to %d", i, prevCfg.ConfigSchema.KeepArchives, cfg.ConfigSchema.KeepArchives)
+				}
+				if cfg.ConfigSchema.LfsThresholdMb != prevCfg.ConfigSchema.LfsThresholdMb {
+					t.Errorf("iteration %d: LfsThresholdMb changed from %d to %d", i, prevCfg.ConfigSchema.LfsThresholdMb, cfg.ConfigSchema.LfsThresholdMb)
+				}
+			}
+			prevCfg = cfg
 		}
 	})
 }
