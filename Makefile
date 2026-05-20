@@ -27,6 +27,11 @@ snapshot: ## Test goreleaser locally (builds all platforms)
 	goreleaser release --snapshot --clean
 
 tag: ## Create an annotated git tag for a new release
-	@read -p "Enter version (e.g. v0.2.0): " TAG; \
+	@CURRENT=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"); \
+	MAJOR=$$(echo "$$CURRENT" | sed 's/^v//' | cut -d. -f1); \
+	MINOR=$$(echo "$$CURRENT" | sed 's/^v//' | cut -d. -f2); \
+	SUGGEST="v$$MAJOR.$$(($$MINOR + 1)).0"; \
+	read -p "Enter version [$$SUGGEST]: " TAG; \
+	TAG=$${TAG:-$$SUGGEST}; \
 	git tag -a "$$TAG" -m "Release $$TAG" && \
 	echo "Created tag $$TAG. Push with: git push origin $$TAG"
