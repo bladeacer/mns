@@ -49,7 +49,7 @@ func RunHealthCheck(shouldPrintOutput bool) string {
 
 	fmt.Println("\tConfiguration File:")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		msg := fmt.Sprintf("\t\t[NOT FOUND] Configuration file not found at:\n\t\t%s\n\t\tRun 'mmsync init' to start.\n", configPath)
+		msg := fmt.Sprintf("\t\t[NOT FOUND] Configuration file not found at:\n\t\t%s\n\t\tRun 'mns init' to start.\n", configPath)
 		errStrBuilder.WriteString(msg)
 		fmt.Print(msg)
 	} else {
@@ -59,7 +59,7 @@ func RunHealthCheck(shouldPrintOutput bool) string {
 
 	fmt.Println("\tRepository Path:")
 	if repoPath == "" {
-		msg := "\t\t[NOT SET] Repository Path is not defined.\n\t\tRun 'mmsync init' to set.\n"
+		msg := "\t\t[NOT SET] Repository Path is not defined.\n\t\tRun 'mns init' to set.\n"
 		errStrBuilder.WriteString(msg)
 		fmt.Print(msg)
 	} else {
@@ -75,7 +75,7 @@ func RunHealthCheck(shouldPrintOutput bool) string {
 
 	fmt.Println("\tDatabase Path:")
 	if dbPath == "" {
-		msg := "\t\t[NOT SET] Database Path is not defined.\n\t\tRun 'mmsync init' to start.\n"
+		msg := "\t\t[NOT SET] Database Path is not defined.\n\t\tRun 'mns init' to start.\n"
 		errStrBuilder.WriteString(msg)
 		fmt.Print(msg)
 	} else {

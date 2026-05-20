@@ -71,6 +71,11 @@ var initCmd = &cobra.Command{
 			yaml.WriteYAML(defaultConfig, configPath)
 			config.GetDataStore().SaveData(dbPath)
 			fmt.Printf("\nDatabase created at: '%s'.\n", dbPath)
+
+			repoPath := finalRepoPath
+			if err := ensureGitignoreInDir(repoPath); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: could not ensure .mnemosync is gitignored: %v\n", err)
+			}
 		} else {
 			fmt.Printf("\nDirectory '%s/.git' does not exist.\n", finalRepoPath)
 			fmt.Printf("Aborting configuration write.\n")

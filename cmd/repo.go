@@ -21,7 +21,7 @@ var repoGetCmd = &cobra.Command{
 		// Check if the config is initialized
 		if appConf == nil || !appConf.ConfigSchema.IsInit {
 			configPath := fileio.ResolveConfigPath()
-			fmt.Printf("Error: Configuration file not found or not initialized at expected path:\n%s\nRun mmsync init to start.\n", configPath)
+			fmt.Printf("Error: Configuration file not found or not initialized at expected path:\n%s\nRun mns init to start.\n", configPath)
 			os.Exit(1)
 		}
 
@@ -50,7 +50,7 @@ var repoOpenCmd = &cobra.Command{
 		}
 
 		if !isInit {
-			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mmsync init to start.\n", configPath)
+			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mns init to start.\n", configPath)
 			os.Exit(1)
 		}
 

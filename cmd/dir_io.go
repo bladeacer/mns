@@ -33,7 +33,7 @@ Adds the current directory recursively to be staged.`,
 		isInit := appConf.ConfigSchema.IsInit
 
 		if !isInit {
-			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mmsync init to start.\n", configPath)
+			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mns init to start.\n", configPath)
 		} else {
 			addWrapper(args)
 			fmt.Println("\nFinished adding entries.")

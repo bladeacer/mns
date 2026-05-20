@@ -12,13 +12,13 @@ import (
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Manage the mnemosync configuration file",
-	Long:  "Provides commands to manage the application's configuration file.\nSet the configuration path either with $MMSYNC_CONF environment variable in your shell configuration file e.g. bashrc or with mmsync init.\nConfiguration directory should only be under your home directory.\nRestart your shell when changing or clearing the environment variable.",
+	Long:  "Provides commands to manage the application's configuration file.\nSet the configuration path either with $MMSYNC_CONF environment variable in your shell configuration file e.g. bashrc or with mns init.\nConfiguration directory should only be under your home directory.\nRestart your shell when changing or clearing the environment variable.",
 	Run: func(cmd *cobra.Command, args []string) {
 		configPath := fileio.ResolveConfigPath()
 		isInit := appConf.ConfigSchema.IsInit
 
 		if !isInit {
-			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mmsync init to start.\n", configPath)
+			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mns init to start.\n", configPath)
 		} else {
 			fmt.Printf("\nConfiguration file path:\n%s\n", configPath)
 		}
@@ -34,7 +34,7 @@ var getCmd = &cobra.Command{
 		isInit := appConf.ConfigSchema.IsInit
 
 		if !isInit {
-			fmt.Printf("Error: Configuration file not found at expected path:\n%s\nRun mmsync init to start.\n", configPath)
+			fmt.Printf("Error: Configuration file not found at expected path:\n%s\nRun mns init to start.\n", configPath)
 			os.Exit(1)
 		}
 
@@ -63,7 +63,7 @@ var openCmd = &cobra.Command{
 		}
 
 		if !isInit {
-			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mmsync init to start.\n", configPath)
+			fmt.Printf("\nConfiguration file not found at expected path\n%s\nRun mns init to start.\n", configPath)
 			os.Exit(1)
 		}
 

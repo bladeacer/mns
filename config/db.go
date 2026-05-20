@@ -14,15 +14,25 @@ type DirData struct {
 	TargetPath string `json:"target_path"`
 	Alias      string `json:"alias"`
 }
+
+type StagingHistoryEntry struct {
+	Timestamp string   `json:"timestamp"`
+	Archive   string   `json:"archive"`
+	SizeBytes int64    `json:"size_bytes"`
+	Dirs      []string `json:"dirs"`
+}
+
 type DataStore struct {
-	CurrentId   int64              `json:"current_id"`
-	TrackedDirs map[string]DirData `json:"tracked_dirs"`
+	CurrentId      int64                 `json:"current_id"`
+	TrackedDirs    map[string]DirData    `json:"tracked_dirs"`
+	StagingHistory []StagingHistoryEntry `json:"staging_history"`
 }
 
 func GetDataStore() *DataStore {
 	return &DataStore{
-		CurrentId:   0,
-		TrackedDirs: make(map[string]DirData),
+		CurrentId:      0,
+		TrackedDirs:    make(map[string]DirData),
+		StagingHistory: make([]StagingHistoryEntry, 0),
 	}
 }
 func LoadDataStore() (*DataStore, error) {
@@ -66,6 +76,40 @@ func (ds *DataStore) AddDir(data DirData) string {
 	ds.TrackedDirs[newIDStr] = data
 	return newIDStr
 }
+func (ds *DataStore) DeleteDir(id string) bool {
+	if _, exists := ds.TrackedDirs[id]; exists {
+		delete(ds.TrackedDirs, id)
+		return true
+	}
+	return false
+}
+
+func (ds *DataStore) FindDirByAlias(alias string) (string, DirData, bool) {
+	for id, entry := range ds.TrackedDirs {
+		if entry.Alias == alias {
+			return id, entry, true
+		}
+	}
+	return "", DirData{}, false
+}
+
+func (ds *DataStore) FindDirByPath(path string) (string, DirData, bool) {
+	for id, entry := range ds.TrackedDirs {
+		if entry.TargetPath == path {
+			return id, entry, true
+		}
+	}
+	return "", DirData{}, false
+}
+
+func (ds *DataStore) AddHistory(entry StagingHistoryEntry) {
+	ds.StagingHistory = append(ds.StagingHistory, entry)
+}
+
+func (ds *DataStore) ClearHistory() {
+	ds.StagingHistory = make([]StagingHistoryEntry, 0)
+}
+
 func (ds *DataStore) SaveData(targetPath string) error {
 	jsonData, err := json.MarshalIndent(ds, "", "  ")
 	if err != nil {
