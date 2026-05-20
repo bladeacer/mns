@@ -18,7 +18,7 @@ These tools must be installed and available in your `$PATH`:
 - **[git](https://git-scm.com/downloads)** — version control
 - **[rsync](https://rsync.samba.org/download.html)** — staging mirroring (pre-installed on macOS and most Linux distros; on Windows use [MSYS2](https://www.msys2.org/)
 - **[tar](https://www.gnu.org/software/tar/)** or **[zip](https://infozip.sourceforge.net/)** — at least one archiver (pre-installed on macOS and Linux; on Windows use [MSYS2](https://www.msys2.org/))
-- **[git-lfs](https://git-lfs.com/)** — optional, auto-configured for archives exceeding `lfs_threshold_mb`
+- **[Git LFS](https://git-lfs.com/)** — optional, auto-configured for archives exceeding `lfs_threshold_mb` (invoked via `git lfs`)
 
 ## Installation
 
@@ -38,12 +38,13 @@ Pre-built binaries are available for:
 
 | OS | Architectures |
 | --- | --- |
-| Linux | `amd64` (x86-64), `arm64` (ARM 64-bit) |
+| Linux / WSL | `amd64` (x86-64), `arm64` (ARM 64-bit) |
 | macOS | `amd64` (Intel), `arm64` (Apple Silicon) |
 | Windows | `amd64` (x86-64), `arm64` (ARM 64-bit) |
 
 All binaries are fully static (compiled with `CGO_ENABLED=0`) with no
-C runtime dependencies.
+C runtime dependencies — the Linux archive works on both native Linux
+and WSL without extra setup.
 
 **Always backup your files before using mns**.
 
@@ -125,7 +126,7 @@ mns push                         # archive staging dir, commit, push
   the archive is committed, and the remote is pushed.
 - Only the 5 most recent archives are kept in the repo (configurable via
   `keep_archives`).
-- Archives exceeding 5 MB trigger Git LFS tracking if `git-lfs` is installed
+- Archives exceeding 5 MB trigger Git LFS tracking if `git lfs` is available
   (configurable via `lfs_threshold_mb`).
 
 ## Configuration

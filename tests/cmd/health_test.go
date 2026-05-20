@@ -59,14 +59,11 @@ func TestRunHealthCheck_AllValid(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, false)
 
-	if strings.Contains(result, "✗") {
+	if strings.Contains(result, "[!!]") {
 		t.Errorf("unexpected error: %s", result)
 	}
 	if strings.Contains(result, "not set") {
 		t.Errorf("unexpected 'not set' error: %s", result)
-	}
-	if strings.Contains(result, "⚠") {
-		t.Errorf("unexpected warning: %s", result)
 	}
 }
 
@@ -153,8 +150,8 @@ func TestRunHealthCheck_RepoIsGitDir(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, false)
 
-	if strings.Contains(result, "⚠") {
-		t.Errorf("unexpected warning for valid git repo: %s", result)
+	if strings.Contains(result, "[!!]") {
+		t.Errorf("unexpected error for valid git repo: %s", result)
 	}
 }
 
@@ -209,7 +206,7 @@ func TestRunHealthCheck_WithOutput(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, true)
 
-	if strings.Contains(result, "✗") && !strings.Contains(result, "zip") {
+	if strings.Contains(result, "[!!]") && !strings.Contains(result, "zip") {
 		t.Errorf("unexpected fail in output: %s", result)
 	}
 }

@@ -227,6 +227,35 @@ func TestLoadConfig_UpdatesSchema(t *testing.T) {
 	})
 }
 
+func TestLoadConfig_RepoPathNotExist(t *testing.T) {
+	withFakeHome(t, func(homeDir string) {
+		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
+		yamlContent := `config_schema:
+  config_path: "` + configPath + `"
+  app_version: "0.1.0"
+  is_init: true
+  repo_path: "` + filepath.Join(homeDir, "nonexistent-repo") + `"
+  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  archiver: tar
+  commit_fmt: "mnemosync archive 2006-01-02"
+  respect_gitignore: true
+  hist_limit_days: 7
+  hist_limit_size_mb: 1024
+  keep_archives: 5
+  lfs_threshold_mb: 5
+`
+		writeConfig(t, homeDir, yamlContent)
+
+		cfg, err := confighandler.LoadConfig()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if cfg == nil {
+			t.Fatal("expected non-nil config")
+		}
+	})
+}
+
 func TestLoadConfig_ReadError(t *testing.T) {
 	withFakeHome(t, func(homeDir string) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")

@@ -53,3 +53,26 @@ func TestCopyFile_MkdirAllError(t *testing.T) {
 		t.Error("expected error when a file blocks directory creation")
 	}
 }
+
+func TestCopyFile_Success(t *testing.T) {
+	dir := t.TempDir()
+	srcPath := filepath.Join(dir, "source.txt")
+	dstPath := filepath.Join(dir, "subdir", "dest.txt")
+
+	if err := os.WriteFile(srcPath, []byte("hello world"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := fileio.CopyFile(srcPath, dstPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	data, err := os.ReadFile(dstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "hello world" {
+		t.Errorf("expected 'hello world', got '%s'", string(data))
+	}
+}

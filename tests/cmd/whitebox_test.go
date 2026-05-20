@@ -943,6 +943,10 @@ func TestEnsureLfsTracking_NoGitLFSBinary(t *testing.T) {
 	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 1
 	defer resetGlobals()
 
+	origPath := os.Getenv("PATH")
+	_ = os.Setenv("PATH", dir)
+	defer func() { _ = os.Setenv("PATH", origPath) }()
+
 	archivePath := filepath.Join(dir, "archive.tar.gz")
 	largeData := make([]byte, 2*1024*1024)
 	if err := os.WriteFile(archivePath, largeData, 0644); err != nil {
@@ -1509,4 +1513,37 @@ func TestDisplayManPage_NroffFallback(t *testing.T) {
 	_ = w.Close()
 	os.Stdout = stdoutBak
 	_ = r.Close()
+}
+
+func TestEnsureLfsTracking_ThresholdZero(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 0
+	defer resetGlobals()
+
+	archivePath := filepath.Join(dir, "test.tar.gz")
+	if err := os.WriteFile(archivePath, []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := cmd.EnsureLfsTracking(archivePath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPruneOldArchives_ZipArchiver(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	cmd.GetAppConf().ConfigSchema.KeepArchives = 2
+	defer resetGlobals()
+
+	for i := 0; i < 3; i++ {
+		path := filepath.Join(dir, "mnemosync-backup-20060102-15040"+string(rune('0'+i))+".zip")
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cmd.PruneOldArchives("zip")
 }
