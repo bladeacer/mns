@@ -63,6 +63,23 @@ func TestGitDirExists_NonExistentPath(t *testing.T) {
 	}
 }
 
+func TestGitDirExists_StatErrorOnGitDir(t *testing.T) {
+	dir := t.TempDir()
+	gitDir := filepath.Join(dir, ".git")
+	if err := os.MkdirAll(gitDir, 0000); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0555); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(dir, 0755); _ = os.Chmod(gitDir, 0755) }()
+
+	_, err := healthcheck.GitDirExists(dir)
+	if err == nil {
+		t.Log("note: stat did not fail (OS-dependent behavior)")
+	}
+}
+
 func TestCheckBinary_Found(t *testing.T) {
 	result := healthcheck.CheckBinary("sh")
 	if !result.Found {

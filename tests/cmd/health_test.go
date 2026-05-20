@@ -240,6 +240,27 @@ func TestRunHealthCheck_ConfigFileExists(t *testing.T) {
 	}
 }
 
+func TestCheckBinary_OptionalNotFound(t *testing.T) {
+	result := cmd.CheckBinary("nonexistent-binary-xyz", true, false)
+	if !strings.Contains(result, "[WARNING]") {
+		t.Errorf("expected [WARNING] for missing optional binary, got: '%s'", result)
+	}
+}
+
+func TestCheckBinary_WithOutput(t *testing.T) {
+	result := cmd.CheckBinary("sh", false, true)
+	if result != "" {
+		t.Errorf("expected empty result for found binary, got: '%s'", result)
+	}
+}
+
+func TestCheckBinary_NotFoundWithOutput(t *testing.T) {
+	result := cmd.CheckBinary("nonexistent-binary-xyz", false, true)
+	if !strings.Contains(result, "[FAIL]") {
+		t.Errorf("expected [FAIL] for missing required binary, got: '%s'", result)
+	}
+}
+
 func TestRunHealthCheck_DbPathSetButNotExist(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.yaml")

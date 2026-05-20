@@ -1001,6 +1001,89 @@ func TestEnsureLfsTracking_Zip(t *testing.T) {
 	}
 }
 
+func TestEnsureLfsTracking_WithLFS(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 1
+	defer resetGlobals()
+
+	fakeLFS := filepath.Join(dir, "git-lfs")
+	if err := os.WriteFile(fakeLFS, []byte("#!/bin/sh\necho 'lfs tracked'"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	origPath := os.Getenv("PATH")
+	_ = os.Setenv("PATH", dir+string(filepath.ListSeparator)+origPath)
+	defer func() { _ = os.Setenv("PATH", origPath) }()
+
+	archivePath := filepath.Join(dir, "test.tar.gz")
+	buf := make([]byte, 1048576+1)
+	if err := os.WriteFile(archivePath, buf, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := cmd.EnsureLfsTracking(archivePath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestEnsureLfsTracking_WithLFSZip(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 1
+	defer resetGlobals()
+
+	fakeLFS := filepath.Join(dir, "git-lfs")
+	if err := os.WriteFile(fakeLFS, []byte("#!/bin/sh\necho 'lfs tracked'"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	origPath := os.Getenv("PATH")
+	_ = os.Setenv("PATH", dir+string(filepath.ListSeparator)+origPath)
+	defer func() { _ = os.Setenv("PATH", origPath) }()
+
+	archivePath := filepath.Join(dir, "test.zip")
+	buf := make([]byte, 1048576+1)
+	if err := os.WriteFile(archivePath, buf, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := cmd.EnsureLfsTracking(archivePath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestEnsureLfsTracking_GitattributesReadError(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 1
+	defer resetGlobals()
+
+	gaPath := filepath.Join(cmd.GetAppConf().ConfigSchema.RepoPath, ".gitattributes")
+	if err := os.MkdirAll(gaPath, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	fakeLFS := filepath.Join(dir, "git-lfs")
+	if err := os.WriteFile(fakeLFS, []byte("#!/bin/sh\necho 'lfs tracked'"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	origPath := os.Getenv("PATH")
+	_ = os.Setenv("PATH", dir+string(filepath.ListSeparator)+origPath)
+	defer func() { _ = os.Setenv("PATH", origPath) }()
+
+	archivePath := filepath.Join(dir, "test.tar.gz")
+	buf := make([]byte, 1048576+1)
+	if err := os.WriteFile(archivePath, buf, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := cmd.EnsureLfsTracking(archivePath)
+	if err == nil {
+		t.Error("expected error when .gitattributes is a directory")
+	}
+}
+
 func TestExecute(t *testing.T) {
 	cfg := &config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
@@ -1102,15 +1185,52 @@ func TestPruneStaging_NoStagingDirExists(t *testing.T) {
 	cmd.PruneStaging()
 }
 
-func TestPruneOldArchives_GlobError(t *testing.T) {
+func TestPruneStaging_NonDirEntries(t *testing.T) {
 	dir := t.TempDir()
 	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
-			RepoPath:     dir,
+			RepoPath: dir,
+		},
+	})
+	defer resetGlobals()
+
+	stagingDir := filepath.Join(dir, ".git", "staging")
+	_ = os.MkdirAll(stagingDir, 0755)
+	// Create a regular file, not a directory - should be skipped
+	_ = os.WriteFile(filepath.Join(stagingDir, "notadir"), []byte("x"), 0644)
+
+	cmd.PruneStaging()
+}
+
+func TestPruneOldArchives_GlobError(t *testing.T) {
+	cmd.SetAppConf(&config.MnemoConf{
+		ConfigSchema: config.ConfigSchema{
+			RepoPath:     "/nonexistent-glob-path-xyz",
 			KeepArchives: 3,
 		},
 	})
 	defer resetGlobals()
+
+	cmd.PruneOldArchives("tar")
+}
+
+func TestPruneOldArchives_RemoveError(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	cmd.GetAppConf().ConfigSchema.KeepArchives = 1
+	defer resetGlobals()
+
+	for i := 0; i < 3; i++ {
+		path := filepath.Join(dir, "mnemosync-backup-20060102-15040"+string(rune('0'+i))+".tar.gz")
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := os.Chmod(dir, 0555); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(dir, 0755) }()
 
 	cmd.PruneOldArchives("tar")
 }
@@ -1306,6 +1426,44 @@ func TestDisplayManPage_NoPanic(t *testing.T) {
 	stdoutBak := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+
+	done := make(chan bool, 1)
+	go func() {
+		defer func() { _ = recover(); done <- true }()
+		cmd.DisplayManPage()
+		done <- true
+	}()
+
+	<-done
+	_ = w.Close()
+	os.Stdout = stdoutBak
+	_ = r.Close()
+}
+
+func TestDisplayManPage_NroffFallback(t *testing.T) {
+	dir := t.TempDir()
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Unsetenv("HOME") }()
+
+	origPath := os.Getenv("PATH")
+	dirOnly := dir
+	_ = os.Setenv("PATH", dirOnly)
+	defer func() { _ = os.Setenv("PATH", origPath) }()
+
+	origPager := os.Getenv("PAGER")
+	_ = os.Setenv("PAGER", "cat")
+	defer func() { _ = os.Setenv("PAGER", origPager) }()
+
+	stdoutBak := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd.SetAppConf(&config.MnemoConf{
+		ConfigSchema: config.ConfigSchema{
+			AppVersion: "0.1.0",
+		},
+	})
+	defer resetGlobals()
 
 	done := make(chan bool, 1)
 	go func() {
