@@ -97,7 +97,8 @@ the progress tracker.
 | `mns repo open` | Open the configuration file in `$EDITOR` | Done |
 | `mns health` | Check required binaries (`git`, `rsync`, `tar`, `zip`) and config | Done |
 | `mns version` | Print the version of mnemosync | Done |
-| `mns man` | Generate and display the manual page | Done |
+| `mns man` | Generate, persist to man-db (`~/.local/share/man/man1/mns.1`), and display the manual page | Done |
+| `mns man --force` | Force-overwrite the persisted man page even if unchanged | Done |
 | `mns completion [shell]` | Generate autocompletion script (Cobra CLI builtin) | Done |
 | `mns get-archiver` | Show the current archiver (`tar` or `zip`, default: `tar`) | Done |
 | `mns set-archiver <tar\|zip>` | Set the archiver | Done |

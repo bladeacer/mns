@@ -14,14 +14,13 @@ help: ## Show this help
 build: ## Build the mns binary
 	go build -ldflags="$(LDFLAGS)" -o $(BINARY) .
 
-test: ## Run all tests
-	go test ./... -v -count=1
-
-cover: ## Run tests with code coverage
+test: ## Run all tests with coverage and badge
 	go test -coverpkg=./... -coverprofile=coverage.out ./... -count=1
 	@go tool cover -func=coverage.out | tail -1
-	@echo "---"
-	@echo "HTML report: go tool cover -html=coverage.out"
+	@go-test-coverage -p coverage.out -b coverage.svg 2>/dev/null || true
+
+cover: ## Run tests with code coverage (alias for test)
+	$(MAKE) test
 
 lint: ## Run golangci-lint
 	golangci-lint run ./...

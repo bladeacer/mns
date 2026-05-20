@@ -1245,3 +1245,77 @@ func TestPathCompleter_NonExistentDir(t *testing.T) {
 		t.Errorf("expected nil, got %v", suggestions)
 	}
 }
+
+func TestPersistManPage_CreatesFile(t *testing.T) {
+	dir := t.TempDir()
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Unsetenv("HOME") }()
+
+	err := cmd.PersistManPage(".TH MNS 1 \"test\"")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	manPath := filepath.Join(dir, ".local", "share", "man", "man1", "mns.1")
+	if _, err := os.Stat(manPath); os.IsNotExist(err) {
+		t.Error("expected man page file to be created")
+	}
+}
+
+func TestPersistManPage_SkipRewrite(t *testing.T) {
+	dir := t.TempDir()
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Unsetenv("HOME") }()
+
+	manPath := filepath.Join(dir, ".local", "share", "man", "man1", "mns.1")
+	_ = os.MkdirAll(filepath.Dir(manPath), 0755)
+	_ = os.WriteFile(manPath, []byte(".TH MNS 1 \"test\""), 0644)
+	origModTime, _ := os.Stat(manPath)
+
+	err := cmd.PersistManPage(".TH MNS 1 \"test\"")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	newModTime, _ := os.Stat(manPath)
+	if newModTime.ModTime() != origModTime.ModTime() {
+		t.Error("expected file not to be rewritten when content is the same")
+	}
+}
+
+func TestPersistManPage_NoHome(t *testing.T) {
+	realHome := os.Getenv("HOME")
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", realHome) }()
+
+	err := cmd.PersistManPage("test")
+	if err == nil {
+		t.Error("expected error when HOME is not set")
+	}
+}
+
+func TestDisplayManPage_NoPanic(t *testing.T) {
+	dir := t.TempDir()
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Unsetenv("HOME") }()
+
+	origPager := os.Getenv("PAGER")
+	_ = os.Setenv("PAGER", "cat")
+	defer func() { _ = os.Setenv("PAGER", origPager) }()
+
+	stdoutBak := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	done := make(chan bool, 1)
+	go func() {
+		defer func() { _ = recover(); done <- true }()
+		cmd.DisplayManPage()
+		done <- true
+	}()
+
+	<-done
+	_ = w.Close()
+	os.Stdout = stdoutBak
+	_ = r.Close()
+}

@@ -179,6 +179,18 @@ func TestDataStore_SaveData_CreatesDirs(t *testing.T) {
 	}
 }
 
+func TestDataStore_SaveData_WriteError(t *testing.T) {
+	dir := t.TempDir()
+
+	ds := config.GetDataStore()
+	ds.AddDir(config.DirData{TargetPath: "/tmp/test", Alias: "test"})
+
+	err := ds.SaveData(dir)
+	if err == nil {
+		t.Error("expected error when target path is a directory")
+	}
+}
+
 func TestLoadDataStore_NoFile(t *testing.T) {
 	ds, err := config.LoadDataStore()
 	if err != nil {

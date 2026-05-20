@@ -38,7 +38,7 @@ func generateManPage() (string, error) {
 	return manPage.Build(roff.NewDocument()), nil
 }
 
-func persistManPage(content string) error {
+func PersistManPage(content string) error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("cannot determine home directory: %w", err)
@@ -73,7 +73,7 @@ func DisplayManPage() {
 		panic(err)
 	}
 
-	if err := persistManPage(manContent); err != nil {
+	if err := PersistManPage(manContent); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not persist man page to man-db: %v\n", err)
 	}
 
