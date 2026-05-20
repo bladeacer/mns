@@ -11,7 +11,7 @@ func TestValidateDataStoreSchema_NegativeID(t *testing.T) {
 		CurrentId:   -1,
 		TrackedDirs: make(map[string]config.DirData),
 	}
-	err := config.ValidateDataStoreSchema(ds)
+	_, err := config.ValidateDataStoreSchema(ds)
 	if err == nil {
 		t.Error("expected error for negative CurrentId")
 	}
@@ -22,7 +22,7 @@ func TestValidateDataStoreSchema_NilTrackedDirs(t *testing.T) {
 		CurrentId:   0,
 		TrackedDirs: nil,
 	}
-	err := config.ValidateDataStoreSchema(ds)
+	_, err := config.ValidateDataStoreSchema(ds)
 	if err == nil {
 		t.Error("expected error for nil TrackedDirs")
 	}
@@ -35,9 +35,15 @@ func TestValidateDataStoreSchema_MissingTargetPath(t *testing.T) {
 			"1": {TargetPath: "", Alias: "test"},
 		},
 	}
-	err := config.ValidateDataStoreSchema(ds)
-	if err == nil {
-		t.Error("expected error for missing target_path")
+	repaired, err := config.ValidateDataStoreSchema(ds)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !repaired {
+		t.Error("expected repair to remove entry with missing target_path")
+	}
+	if len(ds.TrackedDirs) != 0 {
+		t.Errorf("expected 0 entries after removal, got %d", len(ds.TrackedDirs))
 	}
 }
 
@@ -48,9 +54,15 @@ func TestValidateDataStoreSchema_MissingAlias(t *testing.T) {
 			"1": {TargetPath: "/tmp/test", Alias: ""},
 		},
 	}
-	err := config.ValidateDataStoreSchema(ds)
-	if err == nil {
-		t.Error("expected error for missing alias")
+	repaired, err := config.ValidateDataStoreSchema(ds)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !repaired {
+		t.Error("expected repair to remove entry with missing alias")
+	}
+	if len(ds.TrackedDirs) != 0 {
+		t.Errorf("expected 0 entries after removal, got %d", len(ds.TrackedDirs))
 	}
 }
 
@@ -62,9 +74,15 @@ func TestValidateDataStoreSchema_DuplicateTargetPath(t *testing.T) {
 			"2": {TargetPath: "/tmp/test", Alias: "alias2"},
 		},
 	}
-	err := config.ValidateDataStoreSchema(ds)
-	if err == nil {
-		t.Error("expected error for duplicate target_path")
+	repaired, err := config.ValidateDataStoreSchema(ds)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !repaired {
+		t.Error("expected repair to remove duplicate target_path entry")
+	}
+	if len(ds.TrackedDirs) != 1 {
+		t.Errorf("expected 1 entry after dedup, got %d", len(ds.TrackedDirs))
 	}
 }
 
@@ -76,9 +94,15 @@ func TestValidateDataStoreSchema_DuplicateAlias(t *testing.T) {
 			"2": {TargetPath: "/tmp/test2", Alias: "same"},
 		},
 	}
-	err := config.ValidateDataStoreSchema(ds)
-	if err == nil {
-		t.Error("expected error for duplicate alias")
+	repaired, err := config.ValidateDataStoreSchema(ds)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !repaired {
+		t.Error("expected repair to remove duplicate alias entry")
+	}
+	if len(ds.TrackedDirs) != 1 {
+		t.Errorf("expected 1 entry after dedup, got %d", len(ds.TrackedDirs))
 	}
 }
 
@@ -90,8 +114,11 @@ func TestValidateDataStoreSchema_Valid(t *testing.T) {
 			"2": {TargetPath: "/tmp/test2", Alias: "alias2"},
 		},
 	}
-	err := config.ValidateDataStoreSchema(ds)
+	repaired, err := config.ValidateDataStoreSchema(ds)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+	if repaired {
+		t.Error("expected no repair for valid data")
 	}
 }

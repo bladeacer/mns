@@ -256,7 +256,7 @@ func TestLoadDataStore_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestLoadDataStore_CorruptData_Repairs(t *testing.T) {
+func TestLoadDataStore_CorruptData_Rejected(t *testing.T) {
 	dir, cleanup := writeConfigDir(t)
 	defer cleanup()
 
@@ -266,19 +266,33 @@ func TestLoadDataStore_CorruptData_Repairs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ds, err := config.LoadDataStore()
-	if err != nil {
-		t.Fatalf("expected repair to succeed, got: %v", err)
+	_, err := config.LoadDataStore()
+	if err == nil {
+		t.Error("expected error for corrupt data (negative current_id + null tracked_dirs)")
 	}
-	if ds.CurrentId != 0 {
-		t.Errorf("expected CurrentId reset to 0 after repair, got %d", ds.CurrentId)
-	}
-	if len(ds.TrackedDirs) != 0 {
-		t.Errorf("expected TrackedDirs to be empty after repair, got %d", len(ds.TrackedDirs))
+}
+
+func TestLoadDataStore_FiltersCorruptEntries(t *testing.T) {
+	dir, cleanup := writeConfigDir(t)
+	defer cleanup()
+
+	dbPath := filepath.Join(dir, "mmsync-state.json")
+	content := `{"current_id": 1, "tracked_dirs": {"1": {"target_path": "/tmp/valid", "alias": "valid"}, "2": {"target_path": "", "alias": "empty-path"}, "3": {"target_path": "/tmp/dup", "alias": "dup1"}, "4": {"target_path": "/tmp/dup", "alias": "dup2"}}, "staging_history": []}`
+	if err := os.WriteFile(dbPath, []byte(content), 0644); err != nil {
+		t.Fatal(err)
 	}
 
-	repairedContent, _ := os.ReadFile(dbPath)
-	if len(repairedContent) == 0 {
-		t.Error("expected repaired file to contain data")
+	ds, err := config.LoadDataStore()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(ds.TrackedDirs) != 2 {
+		t.Errorf("expected 2 valid entries after filtering, got %d", len(ds.TrackedDirs))
+	}
+	if _, exists := ds.TrackedDirs["1"]; !exists {
+		t.Error("expected valid entry '1' to survive")
+	}
+	if _, exists := ds.TrackedDirs["3"]; !exists {
+		t.Error("expected first duplicate entry '3' to survive")
 	}
 }

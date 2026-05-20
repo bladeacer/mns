@@ -54,16 +54,15 @@ func LoadDataStore() (*DataStore, error) {
 		return nil, fmt.Errorf("error unmarshalling JSON data from %s. File may be corrupt: %w", dbPath, err)
 	}
 
-	if err := ValidateDataStoreSchema(tempDS); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: Database at %s failed schema validation: %v. Overwriting with default data.\n", dbPath, err)
+	repaired, err := ValidateDataStoreSchema(tempDS)
+	if err != nil {
+		return nil, fmt.Errorf("database at %s failed schema validation and cannot be repaired: %w", dbPath, err)
+	}
 
-		tempDS = defaultDS
-
+	if repaired {
 		if saveErr := tempDS.SaveData(dbPath); saveErr != nil {
-			return nil, fmt.Errorf("critical error: failed to repair and save default data store: %w", saveErr)
+			return nil, fmt.Errorf("failed to persist repaired database: %w", saveErr)
 		}
-
-		return tempDS, nil
 	}
 
 	return tempDS, nil
@@ -120,41 +119,64 @@ func (ds *DataStore) SaveData(targetPath string) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory structure for %s: %w", targetPath, err)
 	}
-	if err := os.WriteFile(targetPath, jsonData, 0644); err != nil {
-		return fmt.Errorf("failed to write JSON data to file %s: %w", targetPath, err)
+
+	tmpPath := targetPath + ".tmp"
+	if err := os.WriteFile(tmpPath, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write JSON data to temp file %s: %w", tmpPath, err)
+	}
+	if err := os.Rename(tmpPath, targetPath); err != nil {
+		return fmt.Errorf("failed to rename temp file %s to %s: %w", tmpPath, targetPath, err)
 	}
 	return nil
 }
 
-func ValidateDataStoreSchema(ds *DataStore) error {
+func ValidateDataStoreSchema(ds *DataStore) (repaired bool, err error) {
 	if ds.CurrentId < 0 {
-		return fmt.Errorf("current_id cannot be negative; found: %d", ds.CurrentId)
+		return false, fmt.Errorf("current_id cannot be negative; found: %d", ds.CurrentId)
 	}
 	if ds.TrackedDirs == nil {
-		return fmt.Errorf("required field 'tracked_dirs' is missing from the database schema")
+		return false, fmt.Errorf("required field 'tracked_dirs' is missing from the database schema")
 	}
 
+	removed := 0
 	seenTargetPaths := make(map[string]struct{})
 	seenAliases := make(map[string]struct{})
 
 	for id, data := range ds.TrackedDirs {
 		if data.TargetPath == "" {
-			return fmt.Errorf("entry with ID '%s' is missing a required target_path", id)
+			fmt.Fprintf(os.Stderr, "Warning: removing entry '%s' with missing target_path\n", id)
+			delete(ds.TrackedDirs, id)
+			removed++
+			continue
 		}
 		if data.Alias == "" {
-			return fmt.Errorf("entry with ID '%s' is missing a required alias", id)
+			fmt.Fprintf(os.Stderr, "Warning: removing entry '%s' with missing alias\n", id)
+			delete(ds.TrackedDirs, id)
+			removed++
+			continue
 		}
 
 		if _, exists := seenTargetPaths[data.TargetPath]; exists {
-			return fmt.Errorf("duplicate target_path found: '%s'", data.TargetPath)
+			fmt.Fprintf(os.Stderr, "Warning: removing duplicate target_path entry '%s': '%s'\n", id, data.TargetPath)
+			delete(ds.TrackedDirs, id)
+			removed++
+			continue
 		}
 		seenTargetPaths[data.TargetPath] = struct{}{}
 
 		if _, exists := seenAliases[data.Alias]; exists {
-			return fmt.Errorf("duplicate alias found: '%s'", data.Alias)
+			fmt.Fprintf(os.Stderr, "Warning: removing duplicate alias entry '%s': '%s'\n", id, data.Alias)
+			delete(ds.TrackedDirs, id)
+			removed++
+			continue
 		}
 		seenAliases[data.Alias] = struct{}{}
 	}
 
-	return nil
+	if removed > 0 {
+		fmt.Fprintf(os.Stderr, "Warning: removed %d corrupt/duplicate entries from database\n", removed)
+		return true, nil
+	}
+
+	return false, nil
 }

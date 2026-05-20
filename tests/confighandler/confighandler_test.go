@@ -93,7 +93,7 @@ func TestLoadConfig_InvalidYAML(t *testing.T) {
 	})
 }
 
-func TestLoadConfig_HealsOnVersionMismatch(t *testing.T) {
+func TestLoadConfig_VersionMismatchPreservesStoredVersion(t *testing.T) {
 	withFakeHome(t, func(homeDir string) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
@@ -116,13 +116,14 @@ func TestLoadConfig_HealsOnVersionMismatch(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if cfg.ConfigSchema.AppVersion != "0.1.0" {
-			t.Errorf("expected AppVersion healed to '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+		// AppVersion should be preserved from config, not overwritten
+		if cfg.ConfigSchema.AppVersion != "9.9.9" {
+			t.Errorf("expected AppVersion to remain '9.9.9', got '%s'", cfg.ConfigSchema.AppVersion)
 		}
 	})
 }
 
-func TestLoadConfig_HealsOnNotInit(t *testing.T) {
+func TestLoadConfig_NotInitPreservesPaths(t *testing.T) {
 	withFakeHome(t, func(homeDir string) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
@@ -148,8 +149,9 @@ func TestLoadConfig_HealsOnNotInit(t *testing.T) {
 		if cfg.ConfigSchema.IsInit {
 			t.Error("expected IsInit to remain false when not init")
 		}
-		if cfg.ConfigSchema.RepoPath != "" {
-			t.Error("expected RepoPath to be cleared when not init")
+		// RepoPath should NOT be cleared — healing no longer resets paths on IsInit=false
+		if cfg.ConfigSchema.RepoPath != homeDir {
+			t.Errorf("expected RepoPath to be preserved, got '%s'", cfg.ConfigSchema.RepoPath)
 		}
 	})
 }
@@ -189,11 +191,12 @@ func TestLoadConfig_HealsMissingFields(t *testing.T) {
 		if cfg.ConfigSchema.HistLimitSizeMb != 1024 {
 			t.Errorf("expected HistLimitSizeMb healed to 1024, got %d", cfg.ConfigSchema.HistLimitSizeMb)
 		}
-		if cfg.ConfigSchema.KeepArchives != 5 {
-			t.Errorf("expected KeepArchives healed to 5, got %d", cfg.ConfigSchema.KeepArchives)
+		// 0 is a valid value for KeepArchives/LfsThresholdMb (means "disabled")
+		if cfg.ConfigSchema.KeepArchives != 0 {
+			t.Errorf("expected KeepArchives to remain 0, got %d", cfg.ConfigSchema.KeepArchives)
 		}
-		if cfg.ConfigSchema.LfsThresholdMb != 5 {
-			t.Errorf("expected LfsThresholdMb healed to 5, got %d", cfg.ConfigSchema.LfsThresholdMb)
+		if cfg.ConfigSchema.LfsThresholdMb != 0 {
+			t.Errorf("expected LfsThresholdMb to remain 0, got %d", cfg.ConfigSchema.LfsThresholdMb)
 		}
 	})
 }

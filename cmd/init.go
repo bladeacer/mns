@@ -63,6 +63,7 @@ var initCmd = &cobra.Command{
 		defaultConfig := config.GetMnemoConf()
 		defaultConfig.ConfigSchema.IsInit = true
 		defaultConfig.ConfigSchema.RepoPath = finalRepoPath
+		defaultConfig.ConfigSchema.DbPath = dbPath
 
 		exists, _ := healthcheck.GitDirExists(finalRepoPath)
 

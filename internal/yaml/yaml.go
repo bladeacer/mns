@@ -19,15 +19,18 @@ func WriteYAML(defaultConfig *config.MnemoConf, configPath string) {
 	}
 
 	dir := filepath.Dir(configPath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			fmt.Fprintln(os.Stderr, "Error creating config directory:", err)
-			return
-		}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		fmt.Fprintln(os.Stderr, "Error creating config directory:", err)
+		return
 	}
 
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
+	tmpPath := configPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
 		fmt.Fprintln(os.Stderr, "Error writing config file:", err)
+		return
+	}
+	if err := os.Rename(tmpPath, configPath); err != nil {
+		fmt.Fprintln(os.Stderr, "Error finalizing config file:", err)
 		return
 	}
 
@@ -44,8 +47,13 @@ func SaveConfig(cfg *config.MnemoConf, targetPath string) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory structure for %s: %w", targetPath, err)
 	}
-	if err := os.WriteFile(targetPath, jsonData, 0644); err != nil {
-		return fmt.Errorf("failed to write YAML data to file %s: %w", targetPath, err)
+
+	tmpPath := targetPath + ".tmp"
+	if err := os.WriteFile(tmpPath, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write YAML data to temp file %s: %w", tmpPath, err)
+	}
+	if err := os.Rename(tmpPath, targetPath); err != nil {
+		return fmt.Errorf("failed to rename temp file %s to %s: %w", tmpPath, targetPath, err)
 	}
 	return nil
 }

@@ -100,15 +100,9 @@ func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf)
 		warnings = append(warnings, fmt.Errorf("invalid or empty field '%s': %s Overridden with default: '%s'", fieldName, reason, defaultVal))
 	}
 
-	if loadedSchema.AppVersion != defaultSchema.AppVersion {
-		replaceField(&loadedSchema.AppVersion, defaultSchema.AppVersion, "AppVersion", "")
-	}
-
 	if !loadedSchema.IsInit {
-		warnings = append(warnings, fmt.Errorf("found configuration file marked IsInit=false, resetting RepoPath/DbPath"))
-
-		loadedSchema.RepoPath = defaultSchema.RepoPath
-		loadedSchema.DbPath = defaultSchema.DbPath
+		// Don't reset RepoPath/DbPath — just warn and skip field healing
+		warnings = append(warnings, fmt.Errorf("configuration is not initialized; run 'mns init' first"))
 		return warnings
 	}
 
@@ -122,31 +116,27 @@ func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf)
 		replaceField(&loadedSchema.DbPath, defaultSchema.DbPath, "DbPath", "Cannot be empty when initialized")
 	}
 
-	if loadedSchema.ConfigPath == "" {
-		replaceField(&loadedSchema.ConfigPath, defaultSchema.ConfigPath, "ConfigPath", fmt.Sprintf("File path mismatch: %s", loadedSchema.ConfigPath))
-	}
-
 	if loadedSchema.Archiver == "" {
 		replaceField(&loadedSchema.Archiver, defaultSchema.Archiver, "Archiver", "Empty or invalid")
 	}
 	if loadedSchema.CommitFmt == "" {
 		replaceField(&loadedSchema.CommitFmt, defaultSchema.CommitFmt, "CommitFmt", "Empty or invalid")
 	}
-	if loadedSchema.HistLimitDays <= 0 {
+	if loadedSchema.HistLimitDays < 0 {
 		loadedSchema.HistLimitDays = defaultSchema.HistLimitDays
 		warnings = append(warnings, fmt.Errorf("invalid HistLimitDays: %d. Reset to default: %d", loadedSchema.HistLimitDays, defaultSchema.HistLimitDays))
 	}
-	if loadedSchema.HistLimitSizeMb <= 0 {
+	if loadedSchema.HistLimitSizeMb < 0 {
 		loadedSchema.HistLimitSizeMb = defaultSchema.HistLimitSizeMb
 		warnings = append(warnings, fmt.Errorf("invalid HistLimitSizeMb: %d. Reset to default: %d", loadedSchema.HistLimitSizeMb, defaultSchema.HistLimitSizeMb))
 	}
 
-	if loadedSchema.KeepArchives <= 0 {
+	if loadedSchema.KeepArchives < 0 {
 		loadedSchema.KeepArchives = defaultSchema.KeepArchives
 		warnings = append(warnings, fmt.Errorf("invalid KeepArchives: %d. Reset to default: %d", loadedSchema.KeepArchives, defaultSchema.KeepArchives))
 	}
 
-	if loadedSchema.LfsThresholdMb <= 0 {
+	if loadedSchema.LfsThresholdMb < 0 {
 		loadedSchema.LfsThresholdMb = defaultSchema.LfsThresholdMb
 		warnings = append(warnings, fmt.Errorf("invalid LfsThresholdMb: %d. Reset to default: %d", loadedSchema.LfsThresholdMb, defaultSchema.LfsThresholdMb))
 	}
