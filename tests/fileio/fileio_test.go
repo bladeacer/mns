@@ -6,8 +6,19 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bladeacer/mmsync/internal/fileio"
+	"github.com/bladeacer/mns/internal/fileio"
 )
+
+func TestResolveConfigPath_HomeDirErr(t *testing.T) {
+	realHome := os.Getenv("HOME")
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", realHome) }()
+
+	path := fileio.ResolveConfigPath()
+	if path == "" {
+		t.Error("expected fallback path when HOME is unset")
+	}
+}
 
 func TestResolveConfigPath_Default(t *testing.T) {
 	prevConf := os.Getenv("MMSYNC_CONF")
@@ -65,6 +76,17 @@ func TestResolveConfigPath_WithMMSYNCConfFile(t *testing.T) {
 	path := fileio.ResolveConfigPath()
 	if path != "/custom/path/config.yaml" {
 		t.Errorf("expected '/custom/path/config.yaml', got '%s'", path)
+	}
+}
+
+func TestResolveDbPath_HomeDirErr(t *testing.T) {
+	realHome := os.Getenv("HOME")
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", realHome) }()
+
+	path := fileio.ResolveDbPath()
+	if path == "" {
+		t.Error("expected fallback path when HOME is unset")
 	}
 }
 
@@ -179,6 +201,36 @@ func TestMigrateConfigData_TargetExists(t *testing.T) {
 	err = fileio.MigrateConfigData(newConfigPath)
 	if err == nil {
 		t.Error("expected error when target already exists")
+	}
+}
+
+func TestMigrateConfigData_CopyConfigError(t *testing.T) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
+	_ = os.MkdirAll(oldConfigDir, 0755)
+	oldConfigFile := filepath.Join(oldConfigDir, "config.yaml")
+	_ = os.WriteFile(oldConfigFile, []byte("old: config"), 0644)
+	defer func() { _ = os.RemoveAll(oldConfigDir) }()
+
+	newDir := t.TempDir()
+	newConfigPath := filepath.Join(newDir, "nested", "config.yaml")
+
+	if err := os.MkdirAll(filepath.Dir(newConfigPath), 0555); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(filepath.Dir(newConfigPath), 0755) }()
+
+	prevConf := os.Getenv("MMSYNC_CONF")
+	_ = os.Setenv("MMSYNC_CONF", newDir)
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
+
+	err = fileio.MigrateConfigData(newConfigPath)
+	if err == nil {
+		t.Error("expected error when dest dir is not writable")
 	}
 }
 

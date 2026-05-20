@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bladeacer/mmsync/config"
-	"github.com/bladeacer/mmsync/internal/fileio"
-	yamlwrapper "github.com/bladeacer/mmsync/internal/yaml"
+	"github.com/bladeacer/mns/config"
+	"github.com/bladeacer/mns/internal/fileio"
+	yamlwrapper "github.com/bladeacer/mns/internal/yaml"
 	"gopkg.in/yaml.v3"
 )
 
@@ -115,7 +115,7 @@ func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf)
 	if loadedSchema.RepoPath == "" {
 		replaceField(&loadedSchema.RepoPath, defaultSchema.RepoPath, "RepoPath", "Cannot be empty when initialized")
 	} else if _, err := os.Stat(loadedSchema.RepoPath); os.IsNotExist(err) {
-		replaceField(&loadedSchema.RepoPath, defaultSchema.RepoPath, "RepoPath", fmt.Sprintf("Path does not exist on disk: %s", loadedSchema.RepoPath))
+		warnings = append(warnings, fmt.Errorf("RepoPath path does not exist on disk: %s", loadedSchema.RepoPath))
 	}
 
 	if loadedSchema.DbPath == "" {

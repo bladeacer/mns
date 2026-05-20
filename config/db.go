@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/bladeacer/mmsync/internal/fileio"
+	"github.com/bladeacer/mns/internal/fileio"
 )
 
 type DirData struct {

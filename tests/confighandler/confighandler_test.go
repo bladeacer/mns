@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bladeacer/mmsync/internal/confighandler"
+	"github.com/bladeacer/mns/internal/confighandler"
 )
 
 func withFakeHome(t *testing.T, fn func(homeDir string)) {

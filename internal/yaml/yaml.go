@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mns/config"
 	"gopkg.in/yaml.v3"
 )
 

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mns/config"
 )
 
 func writeConfigDir(t *testing.T) (dir string, cleanup func()) {
@@ -188,6 +188,24 @@ func TestDataStore_SaveData_WriteError(t *testing.T) {
 	err := ds.SaveData(dir)
 	if err == nil {
 		t.Error("expected error when target path is a directory")
+	}
+}
+
+func TestDataStore_SaveData_MkdirAllError(t *testing.T) {
+	dir := t.TempDir()
+
+	blockPath := filepath.Join(dir, "block")
+	if err := os.WriteFile(blockPath, []byte("block"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	dbPath := filepath.Join(blockPath, "subdir", "state.json")
+
+	ds := config.GetDataStore()
+	ds.AddDir(config.DirData{TargetPath: "/tmp/test", Alias: "test"})
+
+	err := ds.SaveData(dbPath)
+	if err == nil {
+		t.Error("expected error when mkdir is blocked by a file")
 	}
 }
 

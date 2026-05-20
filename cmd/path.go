@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	// "github.com/bladeacer/mmsync/config"
-	"github.com/bladeacer/mmsync/internal/fileio"
+	// "github.com/bladeacer/mns/config"
+	"github.com/bladeacer/mns/internal/fileio"
 	"github.com/spf13/cobra"
 	"os"
 	"os/exec"

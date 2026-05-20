@@ -1,7 +1,7 @@
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/bladeacer/mnemosync?style=for-the-badge&logo=go)
-![GitHub License](https://img.shields.io/github/license/bladeacer/mnemosync?style=for-the-badge)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/bladeacer/mns?style=for-the-badge&logo=go)
+![GitHub License](https://img.shields.io/github/license/bladeacer/mns?style=for-the-badge)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/bladeacer/mmsync)](https://goreportcard.com/report/github.com/bladeacer/mmsync)
+[![Go Report Card](https://goreportcard.com/badge/github.com/bladeacer/mns)](https://goreportcard.com/report/github.com/bladeacer/mns)
 ![Coverage](coverage.svg)
 
 # mns
@@ -16,7 +16,7 @@ The name is inspired by the Greek Goddess of memory Mnemosyne.
 These tools must be installed and available in your `$PATH`:
 
 - **[git](https://git-scm.com/downloads)** — version control
-- **[rsync](https://rsync.samba.org/download.html)** — staging mirroring (pre-installed on macOS and most Linux distros; on Windows use [MSYS2](https://www.msys2.org/) or [cwRsync](https://www.itefix.net/cwrsync))
+- **[rsync](https://rsync.samba.org/download.html)** — staging mirroring (pre-installed on macOS and most Linux distros; on Windows use [MSYS2](https://www.msys2.org/)
 - **[tar](https://www.gnu.org/software/tar/)** or **[zip](https://infozip.sourceforge.net/)** — at least one archiver (pre-installed on macOS and Linux; on Windows use [MSYS2](https://www.msys2.org/))
 - **[git-lfs](https://git-lfs.com/)** — optional, auto-configured for archives exceeding `lfs_threshold_mb`
 
@@ -25,13 +25,13 @@ These tools must be installed and available in your `$PATH`:
 ### Via Go (development)
 
 ```bash
-go install github.com/bladeacer/mmsync@latest
+go install github.com/bladeacer/mns@latest
 ```
 
 ### Via binary release
 
 Download the latest binary for your platform from the
-[releases page](https://github.com/bladeacer/mmsync/releases), extract it, and
+[releases page](https://github.com/bladeacer/mns/releases), extract it, and
 place it in your `$PATH`.
 
 Pre-built binaries are available for:
@@ -146,8 +146,8 @@ The configuration file is created at `~/.config/mmsync/config.yaml` (or
 ## Development
 
 ```bash
-git clone https://github.com/bladeacer/mmsync
-cd mmsync
+git clone https://github.com/bladeacer/mns
+cd mns
 make build       # builds the mns binary (CGO_ENABLED=0, fully static)
 make lint        # run golangci-lint
 make test        # run all tests

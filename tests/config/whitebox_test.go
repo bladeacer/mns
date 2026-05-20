@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mns/config"
 )
 
 func TestValidateDataStoreSchema_NegativeID(t *testing.T) {

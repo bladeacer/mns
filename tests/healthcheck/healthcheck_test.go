@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bladeacer/mmsync/internal/healthcheck"
+	"github.com/bladeacer/mns/internal/healthcheck"
 )
 
 func TestGitDirExists_ValidGitDir(t *testing.T) {

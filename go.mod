@@ -1,4 +1,4 @@
-module github.com/bladeacer/mmsync
+module github.com/bladeacer/mns
 
 go 1.24.6
 

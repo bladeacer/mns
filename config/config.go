@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/bladeacer/mmsync/internal/fileio"
+	"github.com/bladeacer/mns/internal/fileio"
 )
 
 var AppVersion = "0.1.0"

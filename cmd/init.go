@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bladeacer/mmsync/config"
-	"github.com/bladeacer/mmsync/internal/fileio"
-	"github.com/bladeacer/mmsync/internal/healthcheck"
-	"github.com/bladeacer/mmsync/internal/yaml"
+	"github.com/bladeacer/mns/config"
+	"github.com/bladeacer/mns/internal/fileio"
+	"github.com/bladeacer/mns/internal/healthcheck"
+	"github.com/bladeacer/mns/internal/yaml"
 	"github.com/peterh/liner"
 	"github.com/spf13/cobra"
 )

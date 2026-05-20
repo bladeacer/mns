@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bladeacer/mmsync/cmd"
-	"github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mns/cmd"
+	"github.com/bladeacer/mns/config"
 )
 
 func resetGlobals() {
@@ -224,15 +224,15 @@ func TestCheckBinary_Found(t *testing.T) {
 
 func TestCheckBinary_NotFoundRequired(t *testing.T) {
 	result := cmd.CheckBinary("nonexistent-binary-xyz", false, false)
-	if !strings.Contains(result, "[FAIL]") {
-		t.Errorf("expected [FAIL] for missing required binary, got: '%s'", result)
+	if !strings.Contains(result, "required - not found") {
+		t.Errorf("expected fail for missing required binary, got: '%s'", result)
 	}
 }
 
 func TestCheckBinary_NotFoundOptional(t *testing.T) {
 	result := cmd.CheckBinary("nonexistent-binary-xyz", true, false)
-	if !strings.Contains(result, "[WARNING]") {
-		t.Errorf("expected [WARNING] for missing optional binary, got: '%s'", result)
+	if !strings.Contains(result, "optional - not found") {
+		t.Errorf("expected warning for missing optional binary, got: '%s'", result)
 	}
 }
 
@@ -247,7 +247,7 @@ func TestCheckBinary_WithVersionError(t *testing.T) {
 	defer func() { _ = os.Setenv("PATH", origPath) }()
 
 	result := cmd.CheckBinary("failversion.sh", false, false)
-	if !strings.Contains(result, "[WARNING] Version check failed") {
+	if !strings.Contains(result, "version check") {
 		t.Errorf("expected version check warning, got: '%s'", result)
 	}
 }
@@ -1187,17 +1187,33 @@ func TestPruneStaging_NoStagingDirExists(t *testing.T) {
 
 func TestPruneStaging_NonDirEntries(t *testing.T) {
 	dir := t.TempDir()
-	cmd.SetAppConf(&config.MnemoConf{
-		ConfigSchema: config.ConfigSchema{
-			RepoPath: dir,
-		},
-	})
+	setTestGlobals(dir)
 	defer resetGlobals()
 
-	stagingDir := filepath.Join(dir, ".git", "staging")
+	stagingDir := cmd.StagingDir()
 	_ = os.MkdirAll(stagingDir, 0755)
-	// Create a regular file, not a directory - should be skipped
 	_ = os.WriteFile(filepath.Join(stagingDir, "notadir"), []byte("x"), 0644)
+
+	cmd.PruneStaging()
+}
+
+func TestPruneStaging_RemoveOrphanError(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	defer resetGlobals()
+
+	stagingDir := cmd.StagingDir()
+	orphanDir := filepath.Join(stagingDir, "orphan")
+	if err := os.MkdirAll(orphanDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(orphanDir, "file"), []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(orphanDir, 0000); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(orphanDir, 0755) }()
 
 	cmd.PruneStaging()
 }
@@ -1235,7 +1251,7 @@ func TestPruneOldArchives_RemoveError(t *testing.T) {
 	cmd.PruneOldArchives("tar")
 }
 
-func TestEnsureGitignoreInDir_SymlinkDir(t *testing.T) {
+func TestEnsureGitignoreInDir_ReadNotWritable(t *testing.T) {
 	dir := t.TempDir()
 	gitignorePath := filepath.Join(dir, ".gitignore")
 	if err := os.WriteFile(gitignorePath, []byte("existing content\n"), 0000); err != nil {
@@ -1246,7 +1262,24 @@ func TestEnsureGitignoreInDir_SymlinkDir(t *testing.T) {
 
 	err := cmd.EnsureGitignoreInDir(dir)
 	if err == nil {
-		t.Error("expected error when .gitignore is not writable")
+		t.Error("expected error when .gitignore is not readable")
+	}
+}
+
+func TestEnsureGitignoreInDir_OpenFileError(t *testing.T) {
+	dir := t.TempDir()
+	gitignorePath := filepath.Join(dir, ".gitignore")
+	if err := os.WriteFile(gitignorePath, []byte("existing content\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(gitignorePath, 0444); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(gitignorePath, 0644) }()
+
+	err := cmd.EnsureGitignoreInDir(dir)
+	if err == nil {
+		t.Error("expected error when .gitignore is read-only and cannot be opened for append")
 	}
 }
 

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bladeacer/mmsync/cmd"
-	"github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mns/cmd"
+	"github.com/bladeacer/mns/config"
 )
 
 func TestRunHealthCheck_AllMissing(t *testing.T) {
@@ -21,13 +21,13 @@ func TestRunHealthCheck_AllMissing(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, false)
 
-	if !strings.Contains(result, "[NOT FOUND] Configuration file") {
+	if !strings.Contains(result, "not found") {
 		t.Error("expected config file not found warning")
 	}
-	if !strings.Contains(result, "[NOT SET] Repository Path") {
+	if !strings.Contains(result, "repo path not set") {
 		t.Error("expected repo path not set warning")
 	}
-	if !strings.Contains(result, "[NOT SET] Database Path") {
+	if !strings.Contains(result, "db path not set") {
 		t.Error("expected db path not set warning")
 	}
 }
@@ -59,13 +59,13 @@ func TestRunHealthCheck_AllValid(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, false)
 
-	if strings.Contains(result, "[NOT FOUND]") {
-		t.Errorf("unexpected 'not found' error: %s", result)
+	if strings.Contains(result, "✗") {
+		t.Errorf("unexpected error: %s", result)
 	}
-	if strings.Contains(result, "[NOT SET]") {
+	if strings.Contains(result, "not set") {
 		t.Errorf("unexpected 'not set' error: %s", result)
 	}
-	if strings.Contains(result, "[WARNING]") {
+	if strings.Contains(result, "⚠") {
 		t.Errorf("unexpected warning: %s", result)
 	}
 }
@@ -93,7 +93,7 @@ func TestRunHealthCheck_RepoPathNotExist(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, false)
 
-	if !strings.Contains(result, "[WARNING] Repository directory does not exist") {
+	if !strings.Contains(result, "path not found") {
 		t.Errorf("expected repo path not exist warning, got: %s", result)
 	}
 }
@@ -121,7 +121,7 @@ func TestRunHealthCheck_RepoPathNotGitDir(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, false)
 
-	if !strings.Contains(result, "[WARNING] Repository path exists but is not a git repository") {
+	if !strings.Contains(result, "not a git repository") {
 		t.Errorf("expected not a git repo warning, got: %s", result)
 	}
 }
@@ -153,7 +153,7 @@ func TestRunHealthCheck_RepoIsGitDir(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, false)
 
-	if strings.Contains(result, "[WARNING]") {
+	if strings.Contains(result, "⚠") {
 		t.Errorf("unexpected warning for valid git repo: %s", result)
 	}
 }
@@ -181,7 +181,7 @@ func TestRunHealthCheck_DbPathNotExist(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, false)
 
-	if !strings.Contains(result, "[WARNING] Database file not found") {
+	if !strings.Contains(result, "not found on disk") {
 		t.Errorf("expected db not found warning, got: %s", result)
 	}
 }
@@ -209,10 +209,8 @@ func TestRunHealthCheck_WithOutput(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, true)
 
-	if strings.Contains(result, "[FAIL]") {
-		if !strings.Contains(result, "zip") {
-			t.Errorf("unexpected fail in output: %s", result)
-		}
+	if strings.Contains(result, "✗") && !strings.Contains(result, "zip") {
+		t.Errorf("unexpected fail in output: %s", result)
 	}
 }
 
@@ -235,15 +233,15 @@ func TestRunHealthCheck_ConfigFileExists(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, false)
 
-	if strings.Contains(result, "[NOT FOUND] Configuration file") {
+	if strings.Contains(result, "config") && strings.Contains(result, "not found") {
 		t.Error("expected config file to be found")
 	}
 }
 
 func TestCheckBinary_OptionalNotFound(t *testing.T) {
 	result := cmd.CheckBinary("nonexistent-binary-xyz", true, false)
-	if !strings.Contains(result, "[WARNING]") {
-		t.Errorf("expected [WARNING] for missing optional binary, got: '%s'", result)
+	if !strings.Contains(result, "optional - not found") {
+		t.Errorf("expected warning for missing optional binary, got: '%s'", result)
 	}
 }
 
@@ -256,8 +254,8 @@ func TestCheckBinary_WithOutput(t *testing.T) {
 
 func TestCheckBinary_NotFoundWithOutput(t *testing.T) {
 	result := cmd.CheckBinary("nonexistent-binary-xyz", false, true)
-	if !strings.Contains(result, "[FAIL]") {
-		t.Errorf("expected [FAIL] for missing required binary, got: '%s'", result)
+	if !strings.Contains(result, "required - not found") {
+		t.Errorf("expected fail for missing required binary, got: '%s'", result)
 	}
 }
 
@@ -284,7 +282,7 @@ func TestRunHealthCheck_DbPathSetButNotExist(t *testing.T) {
 
 	result := cmd.RunHealthCheck(cfg, true)
 
-	if !strings.Contains(result, "[WARNING] Database file not found") {
+	if !strings.Contains(result, "not found on disk") {
 		t.Errorf("expected db not found warning when db path is set but file doesn't exist")
 	}
 }

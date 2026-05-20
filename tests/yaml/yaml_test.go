@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bladeacer/mmsync/config"
-	"github.com/bladeacer/mmsync/internal/yaml"
+	"github.com/bladeacer/mns/config"
+	"github.com/bladeacer/mns/internal/yaml"
 )
 
 func TestWriteYAML(t *testing.T) {

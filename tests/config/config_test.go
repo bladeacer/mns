@@ -3,7 +3,7 @@ package config_test
 import (
 	"testing"
 
-	"github.com/bladeacer/mmsync/config"
+	"github.com/bladeacer/mns/config"
 )
 
 func TestGetMnemoConf_ReturnsValidConfig(t *testing.T) {

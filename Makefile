@@ -1,6 +1,6 @@
 BINARY   ?= mns
 VERSION  ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "0.1.0")
-LDFLAGS  := -s -w -X github.com/bladeacer/mmsync/config.AppVersion=$(VERSION)
+LDFLAGS  := -s -w -X github.com/bladeacer/mns/config.AppVersion=$(VERSION)
 
 .DEFAULT_GOAL := help
 
@@ -16,7 +16,7 @@ build: ## Build the mns binary
 
 test: ## Run all tests with coverage and badge
 	go test -coverpkg=./... -coverprofile=coverage.out ./... -count=1
-	@go tool cover -func=coverage.out | tail -1
+	@go tool cover -func=coverage.out
 	@go-test-coverage -p coverage.out -b coverage.svg 2>/dev/null || true
 
 cover: ## Run tests with code coverage (alias for test)

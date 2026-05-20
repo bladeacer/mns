@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bladeacer/mmsync/config"
-	"github.com/bladeacer/mmsync/internal/healthcheck"
+	"github.com/bladeacer/mns/config"
+	"github.com/bladeacer/mns/internal/healthcheck"
 	"github.com/spf13/cobra"
 )
 
@@ -23,16 +23,15 @@ Also checks if the mnemosync configuration files have been created.`,
 }
 
 func RunHealthCheck(cfg *config.MnemoConf, shouldPrintOutput bool) string {
-	var errStrBuilder strings.Builder
-	separator := "_"
-	repeatedSeparator := strings.Repeat(separator, 72)
+	var statusBuilder strings.Builder
 
 	configPath := cfg.ConfigSchema.ConfigPath
 	repoPath := cfg.ConfigSchema.RepoPath
 	dbPath := cfg.ConfigSchema.DbPath
 
 	if shouldPrintOutput {
-		fmt.Println("\n\tRunning Health Check")
+		header := "-- Health Check --"
+		fmt.Printf("\n%s\n\n", header)
 	}
 
 	deps := []struct {
@@ -45,104 +44,105 @@ func RunHealthCheck(cfg *config.MnemoConf, shouldPrintOutput bool) string {
 		{"zip", true},
 	}
 
+	if shouldPrintOutput {
+		fmt.Println("Binaries:")
+	}
 	for _, dep := range deps {
-		if err := CheckBinary(dep.name, dep.isOptional, shouldPrintOutput); err != "" {
-			errStrBuilder.WriteString(err)
+		msg := CheckBinary(dep.name, dep.isOptional, shouldPrintOutput)
+		if msg != "" {
+			statusBuilder.WriteString(msg)
+			statusBuilder.WriteString("\n")
 		}
 	}
 
 	if shouldPrintOutput {
-		fmt.Printf("\t%s\n\n", repeatedSeparator)
-	}
-
-	if shouldPrintOutput {
-		fmt.Println("\tConfiguration File:")
+		fmt.Println()
+		fmt.Println("Configuration:")
 	}
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		msg := fmt.Sprintf("\t\t[NOT FOUND] Configuration file not found at:\n\t\t%s\n\t\tRun 'mns init' to start.\n", configPath)
-		errStrBuilder.WriteString(msg)
+		msg := fmt.Sprintf("  \u2717 %s (not found - run 'mns init')", configPath)
+		statusBuilder.WriteString(msg)
+		statusBuilder.WriteString("\n")
 		if shouldPrintOutput {
-			fmt.Print(msg)
+			fmt.Println(msg)
 		}
 	} else if shouldPrintOutput {
-		fmt.Printf("\t\t[FOUND] at %s\n", configPath)
-	}
-	if shouldPrintOutput {
-		fmt.Printf("\t%s\n", repeatedSeparator)
+		fmt.Printf("  \u2713 %s\n", configPath)
 	}
 
 	if shouldPrintOutput {
-		fmt.Println("\tRepository Path:")
+		fmt.Println()
+		fmt.Println("Repository:")
 	}
 	if repoPath == "" {
-		msg := "\t\t[NOT SET] Repository Path is not defined.\n\t\tRun 'mns init' to set.\n"
-		errStrBuilder.WriteString(msg)
+		msg := "  \u2717 repo path not set (run 'mns init')"
+		statusBuilder.WriteString(msg)
+		statusBuilder.WriteString("\n")
 		if shouldPrintOutput {
-			fmt.Print(msg)
+			fmt.Println(msg)
 		}
 	} else {
-		if shouldPrintOutput {
-			fmt.Printf("\t\t[SET] %s\n", repoPath)
-		}
-
 		if _, err := os.Stat(repoPath); os.IsNotExist(err) {
-			msg := fmt.Sprintf("\t\t[WARNING] Repository directory does not exist on disk: %s\n", repoPath)
-			errStrBuilder.WriteString(msg)
+			msg := fmt.Sprintf("  \u2717 %s (path not found)", repoPath)
+			statusBuilder.WriteString(msg)
+			statusBuilder.WriteString("\n")
 			if shouldPrintOutput {
-				fmt.Print(msg)
+				fmt.Println(msg)
 			}
 		} else {
 			gitDirExists, err := healthcheck.GitDirExists(repoPath)
 			if err != nil {
-				msg := fmt.Sprintf("\t\t[WARNING] Could not check repository git status: %v\n", err)
-				errStrBuilder.WriteString(msg)
+				msg := fmt.Sprintf("  \u26a0 %s (git check failed: %v)", repoPath, err)
+				statusBuilder.WriteString(msg)
+				statusBuilder.WriteString("\n")
 				if shouldPrintOutput {
-					fmt.Print(msg)
+					fmt.Println(msg)
 				}
 			} else if !gitDirExists {
-				msg := fmt.Sprintf("\t\t[WARNING] Repository path exists but is not a git repository: %s\n", repoPath)
-				errStrBuilder.WriteString(msg)
+				msg := fmt.Sprintf("  \u26a0 %s (not a git repository)", repoPath)
+				statusBuilder.WriteString(msg)
+				statusBuilder.WriteString("\n")
 				if shouldPrintOutput {
-					fmt.Print(msg)
+					fmt.Println(msg)
 				}
 			} else if shouldPrintOutput {
-				fmt.Printf("\t\t[PASS] Valid git repository\n")
+				fmt.Printf("  \u2713 %s\n", repoPath)
 			}
 		}
 	}
-	if shouldPrintOutput {
-		fmt.Printf("\t%s\n", repeatedSeparator)
-	}
 
 	if shouldPrintOutput {
-		fmt.Println("\tDatabase Path:")
+		fmt.Println()
+		fmt.Println("Database:")
 	}
 	if dbPath == "" {
-		msg := "\t\t[NOT SET] Database Path is not defined.\n\t\tRun 'mns init' to start.\n"
-		errStrBuilder.WriteString(msg)
+		msg := "  \u2717 db path not set (run 'mns init')"
+		statusBuilder.WriteString(msg)
+		statusBuilder.WriteString("\n")
 		if shouldPrintOutput {
-			fmt.Print(msg)
+			fmt.Println(msg)
 		}
 	} else if shouldPrintOutput {
-		fmt.Printf("\t\t[SET] %s\n", dbPath)
+		fmt.Printf("  \u2713 %s\n", dbPath)
 	}
 
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		msg := fmt.Sprintf("\t\t[WARNING] Database file not found on disk: %s\n", dbPath)
-		errStrBuilder.WriteString(msg)
+		msg := fmt.Sprintf("  \u26a0 %s (not found on disk)", dbPath)
+		statusBuilder.WriteString(msg)
+		statusBuilder.WriteString("\n")
 		if shouldPrintOutput {
-			fmt.Print(msg)
+			fmt.Println(msg)
 		}
 	} else if shouldPrintOutput {
-		fmt.Printf("\t\t[FOUND] at %s\n", dbPath)
+		fmt.Printf("  \u2713 %s\n", dbPath)
 	}
 
 	if shouldPrintOutput {
-		fmt.Printf("\t%s\n", repeatedSeparator)
-		fmt.Println("\n\tHealth Check Complete")
+		fmt.Println()
+		fmt.Println("-- Health Check Complete --")
 	}
 
-	return errStrBuilder.String()
+	return statusBuilder.String()
 }
 
 func CheckBinary(binaryName string, isOptional bool, shouldPrintOutput bool) string {
@@ -150,39 +150,42 @@ func CheckBinary(binaryName string, isOptional bool, shouldPrintOutput bool) str
 
 	if !result.Found {
 		if !isOptional {
-			msg := fmt.Sprintf("[FAIL] Required Binary '%s' not found in PATH.", binaryName)
+			msg := fmt.Sprintf("  \u2717 %s (required - not found in PATH)", binaryName)
 			if shouldPrintOutput {
 				fmt.Println(msg)
 			}
 			return msg
 		}
-		msg := fmt.Sprintf("[WARNING] Optional Binary '%s' not found in PATH.", binaryName)
+		msg := fmt.Sprintf("  \u26a0 %s (optional - not found in PATH)", binaryName)
 		if shouldPrintOutput {
 			fmt.Println(msg)
 		}
 		return msg
 	}
 
+	msg := fmt.Sprintf("  \u2713 %s at %s", binaryName, result.Path)
 	if shouldPrintOutput {
-		fmt.Printf("[PASS] Binary '%s' found at: %s\n", binaryName, result.Path)
+		fmt.Println(msg)
 	}
 
 	if result.Error != nil {
-		var msg string
+		var warnMsg string
 		if result.ExitCode != 0 {
-			msg = fmt.Sprintf("\t[WARNING] Version check failed for '%s'. Exit Code %d. Output:\n\t\t%s\n",
-				binaryName, result.ExitCode, result.Version)
+			warnMsg = fmt.Sprintf("      \u26a0 version check: exit %d (%s)", result.ExitCode, result.Version)
 		} else {
-			msg = fmt.Sprintf("\t[WARNING] Version check failed for '%s': %v\n", binaryName, result.Error)
+			warnMsg = fmt.Sprintf("      \u26a0 version check: %v", result.Error)
 		}
 		if shouldPrintOutput {
-			fmt.Print(msg)
+			fmt.Println(warnMsg)
 		}
-		return msg
+		return msg + "\n" + warnMsg
 	}
 
-	if shouldPrintOutput {
-		fmt.Printf("\tVersion: %s\n", result.Version)
+	if result.Version != "" {
+		verMsg := fmt.Sprintf("      %s", result.Version)
+		if shouldPrintOutput {
+			fmt.Println(verMsg)
+		}
 	}
 
 	return ""

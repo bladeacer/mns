@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bladeacer/mmsync/cmd"
-	"github.com/bladeacer/mmsync/config"
-	"github.com/bladeacer/mmsync/internal/confighandler"
+	"github.com/bladeacer/mns/cmd"
+	"github.com/bladeacer/mns/config"
+	"github.com/bladeacer/mns/internal/confighandler"
 )
 
 func main() {

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bladeacer/mmsync/internal/fileio"
-	yamlwrapper "github.com/bladeacer/mmsync/internal/yaml"
+	"github.com/bladeacer/mns/internal/fileio"
+	yamlwrapper "github.com/bladeacer/mns/internal/yaml"
 	"github.com/spf13/cobra"
 )
 
