@@ -1,4 +1,4 @@
-package cmd
+package cmd_test
 
 import (
 	"bytes"
@@ -9,19 +9,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bladeacer/mmsync/cmd"
 	"github.com/bladeacer/mmsync/config"
 )
 
-var _ = io.Copy
-
 func resetGlobals() {
-	appConf = nil
-	dataStore = nil
+	cmd.SetAppConf(nil)
+	cmd.SetDataStore(nil)
 }
 
 func setTestGlobals(dir string) {
 	resetGlobals()
-	appConf = &config.MnemoConf{
+	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			ConfigPath:      filepath.Join(dir, "config.yaml"),
 			RepoPath:        dir,
@@ -33,13 +32,13 @@ func setTestGlobals(dir string) {
 			KeepArchives:    5,
 			LfsThresholdMb:  5,
 		},
-	}
-	dataStore = config.GetDataStore()
+	})
+	cmd.SetDataStore(config.GetDataStore())
 }
 
 func TestEnsureGitignoreInDir_AddsEntry(t *testing.T) {
 	dir := t.TempDir()
-	if err := ensureGitignoreInDir(dir); err != nil {
+	if err := cmd.EnsureGitignoreInDir(dir); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -59,7 +58,7 @@ func TestEnsureGitignoreInDir_AlreadyPresent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ensureGitignoreInDir(dir); err != nil {
+	if err := cmd.EnsureGitignoreInDir(dir); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -77,7 +76,7 @@ func TestEnsureGitignoreInDir_AppendsToExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ensureGitignoreInDir(dir); err != nil {
+	if err := cmd.EnsureGitignoreInDir(dir); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -97,7 +96,7 @@ func TestEnsureGitignoreInDir_EmptyFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := ensureGitignoreInDir(dir); err != nil {
+	if err := cmd.EnsureGitignoreInDir(dir); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -116,7 +115,7 @@ func TestEnsureGitignoreInDir_ReadError(t *testing.T) {
 	_ = os.Chmod(gitignorePath, 0000)
 	defer func() { _ = os.Chmod(gitignorePath, 0644) }()
 
-	err := ensureGitignoreInDir(dir)
+	err := cmd.EnsureGitignoreInDir(dir)
 	if err == nil {
 		t.Error("expected error when .gitignore is not readable")
 	}
@@ -128,7 +127,7 @@ func TestStagingDir(t *testing.T) {
 	defer resetGlobals()
 
 	expected := filepath.Join(dir, ".mnemosync", "staging")
-	if got := stagingDir(); got != expected {
+	if got := cmd.StagingDir(); got != expected {
 		t.Errorf("expected '%s', got '%s'", expected, got)
 	}
 }
@@ -138,14 +137,14 @@ func TestRepoPath(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	if got := repoPath(); got != dir {
+	if got := cmd.RepoPathFn(); got != dir {
 		t.Errorf("expected '%s', got '%s'", dir, got)
 	}
 }
 
 func TestProcessRepoPath_Absolute(t *testing.T) {
 	dir := t.TempDir()
-	result, err := processRepoPath(dir)
+	result, err := cmd.ProcessRepoPath(dir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -160,7 +159,7 @@ func TestProcessRepoPath_Tilde(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	result, err := processRepoPath("~")
+	result, err := cmd.ProcessRepoPath("~")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -181,7 +180,7 @@ func TestProcessRepoPath_TildePath(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(subdir) }()
 
-	result, err := processRepoPath("~/test-subdir-process")
+	result, err := cmd.ProcessRepoPath("~/test-subdir-process")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -191,7 +190,7 @@ func TestProcessRepoPath_TildePath(t *testing.T) {
 }
 
 func TestProcessRepoPath_NotExist(t *testing.T) {
-	_, err := processRepoPath("/tmp/nonexistent-path-xyz-12345")
+	_, err := cmd.ProcessRepoPath("/tmp/nonexistent-path-xyz-12345")
 	if err == nil {
 		t.Error("expected error for non-existent path")
 	}
@@ -204,7 +203,7 @@ func TestProcessRepoPath_NotDir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := processRepoPath(filePath)
+	_, err := cmd.ProcessRepoPath(filePath)
 	if err == nil {
 		t.Error("expected error for file path")
 	}
@@ -217,21 +216,21 @@ func TestProcessRepoPath_TildeHomeError(t *testing.T) {
 }
 
 func TestCheckBinary_Found(t *testing.T) {
-	result := checkBinary("sh", false, false)
+	result := cmd.CheckBinary("sh", false, false)
 	if result != "" {
 		t.Errorf("expected empty string for found binary, got: '%s'", result)
 	}
 }
 
 func TestCheckBinary_NotFoundRequired(t *testing.T) {
-	result := checkBinary("nonexistent-binary-xyz", false, false)
+	result := cmd.CheckBinary("nonexistent-binary-xyz", false, false)
 	if !strings.Contains(result, "[FAIL]") {
 		t.Errorf("expected [FAIL] for missing required binary, got: '%s'", result)
 	}
 }
 
 func TestCheckBinary_NotFoundOptional(t *testing.T) {
-	result := checkBinary("nonexistent-binary-xyz", true, false)
+	result := cmd.CheckBinary("nonexistent-binary-xyz", true, false)
 	if !strings.Contains(result, "[WARNING]") {
 		t.Errorf("expected [WARNING] for missing optional binary, got: '%s'", result)
 	}
@@ -247,7 +246,7 @@ func TestCheckBinary_WithVersionError(t *testing.T) {
 	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath)
 	defer func() { _ = os.Setenv("PATH", origPath) }()
 
-	result := checkBinary("failversion.sh", false, false)
+	result := cmd.CheckBinary("failversion.sh", false, false)
 	if !strings.Contains(result, "[WARNING] Version check failed") {
 		t.Errorf("expected version check warning, got: '%s'", result)
 	}
@@ -260,10 +259,10 @@ func TestResolveAndValidatePath_Absolute(t *testing.T) {
 		t.Fatal(err)
 	}
 	setTestGlobals(dir)
-	appConf.ConfigSchema.ConfigPath = filepath.Join(dir, "config", "config.yaml")
+	cmd.GetAppConf().ConfigSchema.ConfigPath = filepath.Join(dir, "config", "config.yaml")
 	defer resetGlobals()
 
-	result, err := resolveAndValidatePath(subdir)
+	result, err := cmd.ResolveAndValidatePath(subdir)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -281,7 +280,7 @@ func TestResolveAndValidatePath_Tilde(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	result, err := resolveAndValidatePath("~/")
+	result, err := cmd.ResolveAndValidatePath("~/")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -295,7 +294,7 @@ func TestResolveAndValidatePath_NotExist(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	_, err := resolveAndValidatePath("/tmp/nonexistent-path-xyz-12345")
+	_, err := cmd.ResolveAndValidatePath("/tmp/nonexistent-path-xyz-12345")
 	if err == nil {
 		t.Error("expected error for non-existent path")
 	}
@@ -311,7 +310,7 @@ func TestResolveAndValidatePath_IsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err := resolveAndValidatePath(filePath)
+	_, err := cmd.ResolveAndValidatePath(filePath)
 	if err == nil {
 		t.Error("expected error for file path")
 	}
@@ -322,7 +321,7 @@ func TestResolveAndValidatePath_CircularRepoRef(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	_, err := resolveAndValidatePath(dir)
+	_, err := cmd.ResolveAndValidatePath(dir)
 	if err == nil {
 		t.Error("expected circular reference error")
 	} else if !strings.Contains(err.Error(), "circular reference repo path") {
@@ -337,10 +336,10 @@ func TestResolveAndValidatePath_CircularConfigRef(t *testing.T) {
 		t.Fatal(err)
 	}
 	setTestGlobals(dir)
-	appConf.ConfigSchema.ConfigPath = filepath.Join(configDir, "config.yaml")
+	cmd.GetAppConf().ConfigSchema.ConfigPath = filepath.Join(configDir, "config.yaml")
 	defer resetGlobals()
 
-	_, err := resolveAndValidatePath(configDir)
+	_, err := cmd.ResolveAndValidatePath(configDir)
 	if err != nil && strings.Contains(err.Error(), "cannot circular reference config path") {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -355,7 +354,7 @@ func TestResolveAndValidatePath_MnemosyncDir(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	_, err := resolveAndValidatePath(mnemosyncDir)
+	_, err := cmd.ResolveAndValidatePath(mnemosyncDir)
 	if err == nil {
 		t.Error("expected error for 'mnemosync' dir")
 	}
@@ -364,10 +363,10 @@ func TestResolveAndValidatePath_MnemosyncDir(t *testing.T) {
 func TestResolveEntry_ByID(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/test", Alias: "testalias"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/test", Alias: "testalias"})
 	defer resetGlobals()
 
-	_, entry, found := resolveEntry("1")
+	_, entry, found := cmd.ResolveEntry("1")
 	if !found {
 		t.Fatal("expected to find entry by ID")
 	}
@@ -379,10 +378,10 @@ func TestResolveEntry_ByID(t *testing.T) {
 func TestResolveEntry_ByAlias(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/test", Alias: "myalias"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/test", Alias: "myalias"})
 	defer resetGlobals()
 
-	_, entry, found := resolveEntry("myalias")
+	_, entry, found := cmd.ResolveEntry("myalias")
 	if !found {
 		t.Fatal("expected to find entry by alias")
 	}
@@ -394,10 +393,10 @@ func TestResolveEntry_ByAlias(t *testing.T) {
 func TestResolveEntry_ByPath(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/test", Alias: "testalias"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/test", Alias: "testalias"})
 	defer resetGlobals()
 
-	_, entry, found := resolveEntry("/tmp/test")
+	_, entry, found := cmd.ResolveEntry("/tmp/test")
 	if !found {
 		t.Fatal("expected to find entry by path")
 	}
@@ -411,7 +410,7 @@ func TestResolveEntry_NotFound(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	_, _, found := resolveEntry("nonexistent")
+	_, _, found := cmd.ResolveEntry("nonexistent")
 	if found {
 		t.Error("expected not to find non-existent entry")
 	}
@@ -422,13 +421,13 @@ func TestAddDirectoryEntry_Success(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	err := addDirectoryEntry(dir, "newalias")
+	err := cmd.AddDirectoryEntry(dir, "newalias")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(dataStore.TrackedDirs) != 1 {
-		t.Errorf("expected 1 tracked dir, got %d", len(dataStore.TrackedDirs))
+	if len(cmd.GetDataStore().TrackedDirs) != 1 {
+		t.Errorf("expected 1 tracked dir, got %d", len(cmd.GetDataStore().TrackedDirs))
 	}
 }
 
@@ -437,8 +436,8 @@ func TestAddDirectoryEntry_DuplicatePath(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	_ = addDirectoryEntry(dir, "alias1")
-	err := addDirectoryEntry(dir, "alias2")
+	_ = cmd.AddDirectoryEntry(dir, "alias1")
+	err := cmd.AddDirectoryEntry(dir, "alias2")
 	if err == nil {
 		t.Error("expected error for duplicate path")
 	}
@@ -458,8 +457,8 @@ func TestAddDirectoryEntry_DuplicateAlias(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_ = addDirectoryEntry(subdir1, "samealias")
-	err := addDirectoryEntry(subdir2, "samealias")
+	_ = cmd.AddDirectoryEntry(subdir1, "samealias")
+	err := cmd.AddDirectoryEntry(subdir2, "samealias")
 	if err == nil {
 		t.Error("expected error for duplicate alias")
 	}
@@ -467,7 +466,7 @@ func TestAddDirectoryEntry_DuplicateAlias(t *testing.T) {
 
 func TestEnsureInitialized_NotInitialized(t *testing.T) {
 	resetGlobals()
-	err := ensureInitialized()
+	err := cmd.EnsureInitialized()
 	if err == nil {
 		t.Error("expected error when not initialized")
 	}
@@ -475,15 +474,15 @@ func TestEnsureInitialized_NotInitialized(t *testing.T) {
 
 func TestEnsureInitialized_NoRepoPath(t *testing.T) {
 	resetGlobals()
-	appConf = &config.MnemoConf{
+	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			IsInit:   true,
 			RepoPath: "",
 		},
-	}
+	})
 	defer resetGlobals()
 
-	err := ensureInitialized()
+	err := cmd.EnsureInitialized()
 	if err == nil {
 		t.Error("expected error when repo path is empty")
 	}
@@ -491,15 +490,15 @@ func TestEnsureInitialized_NoRepoPath(t *testing.T) {
 
 func TestEnsureInitialized_RepoNotExist(t *testing.T) {
 	dir := t.TempDir()
-	appConf = &config.MnemoConf{
+	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			IsInit:   true,
 			RepoPath: filepath.Join(dir, "nonexistent"),
 		},
-	}
+	})
 	defer resetGlobals()
 
-	err := ensureInitialized()
+	err := cmd.EnsureInitialized()
 	if err == nil {
 		t.Error("expected error when repo path doesn't exist")
 	}
@@ -507,15 +506,15 @@ func TestEnsureInitialized_RepoNotExist(t *testing.T) {
 
 func TestEnsureInitialized_Success(t *testing.T) {
 	dir := t.TempDir()
-	appConf = &config.MnemoConf{
+	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			IsInit:   true,
 			RepoPath: dir,
 		},
-	}
+	})
 	defer resetGlobals()
 
-	err := ensureInitialized()
+	err := cmd.EnsureInitialized()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -524,11 +523,11 @@ func TestEnsureInitialized_Success(t *testing.T) {
 func TestSelectDirs_All(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/test1", Alias: "alias1"})
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/test2", Alias: "alias2"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/test1", Alias: "alias1"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/test2", Alias: "alias2"})
 	defer resetGlobals()
 
-	dirs := selectDirs([]string{})
+	dirs := cmd.SelectDirs([]string{})
 	if len(dirs) != 2 {
 		t.Errorf("expected 2 dirs, got %d", len(dirs))
 	}
@@ -537,11 +536,11 @@ func TestSelectDirs_All(t *testing.T) {
 func TestSelectDirs_Specific(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/test1", Alias: "alias1"})
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/test2", Alias: "alias2"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/test1", Alias: "alias1"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/test2", Alias: "alias2"})
 	defer resetGlobals()
 
-	dirs := selectDirs([]string{"1"})
+	dirs := cmd.SelectDirs([]string{"1"})
 	if len(dirs) != 1 {
 		t.Errorf("expected 1 dir, got %d", len(dirs))
 	}
@@ -550,10 +549,10 @@ func TestSelectDirs_Specific(t *testing.T) {
 func TestSelectDirs_Unknown(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/test1", Alias: "alias1"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/test1", Alias: "alias1"})
 	defer resetGlobals()
 
-	dirs := selectDirs([]string{"nonexistent"})
+	dirs := cmd.SelectDirs([]string{"nonexistent"})
 	if len(dirs) != 0 {
 		t.Errorf("expected 0 dirs, got %d", len(dirs))
 	}
@@ -562,10 +561,10 @@ func TestSelectDirs_Unknown(t *testing.T) {
 func TestSelectDirs_Deduplicate(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/test1", Alias: "alias1"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/test1", Alias: "alias1"})
 	defer resetGlobals()
 
-	dirs := selectDirs([]string{"1", "1"})
+	dirs := cmd.SelectDirs([]string{"1", "1"})
 	if len(dirs) != 1 {
 		t.Errorf("expected 1 dir (deduplicated), got %d", len(dirs))
 	}
@@ -577,7 +576,7 @@ func TestPathCompleter_Dir(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	suggestions := pathCompleter(dir + "/sub")
+	suggestions := cmd.PathCompleter(dir + "/sub")
 	if len(suggestions) == 0 {
 		t.Error("expected suggestions for partial dir path")
 	}
@@ -585,7 +584,7 @@ func TestPathCompleter_Dir(t *testing.T) {
 
 func TestPathCompleter_NoMatch(t *testing.T) {
 	dir := t.TempDir()
-	suggestions := pathCompleter(dir + "/nonexistent")
+	suggestions := cmd.PathCompleter(dir + "/nonexistent")
 	if len(suggestions) != 0 {
 		t.Errorf("expected 0 suggestions, got %d", len(suggestions))
 	}
@@ -597,7 +596,7 @@ func TestPathCompleter_Tilde(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	suggestions := pathCompleter("~")
+	suggestions := cmd.PathCompleter("~")
 	if len(suggestions) == 0 {
 		t.Error("expected suggestions for tilde expansion")
 		return
@@ -608,7 +607,7 @@ func TestPathCompleter_Tilde(t *testing.T) {
 }
 
 func TestPathCompleter_TildePath(t *testing.T) {
-	suggestions := pathCompleter("~/")
+	suggestions := cmd.PathCompleter("~/")
 	if len(suggestions) == 0 {
 		t.Log("no suggestions for home dir listing (may be empty)")
 	}
@@ -623,7 +622,7 @@ func TestPathCompleter_HiddenFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	suggestions := pathCompleter(dir + "/")
+	suggestions := cmd.PathCompleter(dir + "/")
 	hasVisible := false
 	hasHidden := false
 	for _, s := range suggestions {
@@ -641,7 +640,7 @@ func TestPathCompleter_HiddenFiles(t *testing.T) {
 		t.Error("expected hidden dir NOT in suggestions without leading dot")
 	}
 
-	suggestions = pathCompleter(dir + "/.")
+	suggestions = cmd.PathCompleter(dir + "/.")
 	hasHidden = false
 	for _, s := range suggestions {
 		if strings.Contains(s, ".hidden") {
@@ -654,7 +653,7 @@ func TestPathCompleter_HiddenFiles(t *testing.T) {
 }
 
 func TestPathCompleter_Error(t *testing.T) {
-	suggestions := pathCompleter("/nonexistent-path-xyz-12345/")
+	suggestions := cmd.PathCompleter("/nonexistent-path-xyz-12345/")
 	if suggestions != nil {
 		t.Errorf("expected nil for non-existent directory, got %v", suggestions)
 	}
@@ -665,7 +664,7 @@ func TestPruneStaging_NoStagingDir(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	pruneStaging()
+	cmd.PruneStaging()
 }
 
 func TestPruneStaging_RemovesOrphans(t *testing.T) {
@@ -673,7 +672,7 @@ func TestPruneStaging_RemovesOrphans(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	staging := stagingDir()
+	staging := cmd.StagingDir()
 	if err := os.MkdirAll(staging, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -684,9 +683,9 @@ func TestPruneStaging_RemovesOrphans(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dataStore.AddDir(config.DirData{TargetPath: "/tmp/tracked", Alias: "tracked"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/tracked", Alias: "tracked"})
 
-	pruneStaging()
+	cmd.PruneStaging()
 
 	if _, err := os.Stat(filepath.Join(staging, "orphan")); !os.IsNotExist(err) {
 		t.Error("expected orphan dir to be removed")
@@ -699,7 +698,7 @@ func TestPruneStaging_RemovesOrphans(t *testing.T) {
 func TestPruneOldArchives_RemoveOld(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.KeepArchives = 2
+	cmd.GetAppConf().ConfigSchema.KeepArchives = 2
 	defer resetGlobals()
 
 	for i := 0; i < 4; i++ {
@@ -709,7 +708,7 @@ func TestPruneOldArchives_RemoveOld(t *testing.T) {
 		}
 	}
 
-	pruneOldArchives("tar")
+	cmd.PruneOldArchives("tar")
 
 	matches, _ := filepath.Glob(filepath.Join(dir, "mnemosync-backup-*.tar.gz"))
 	if len(matches) != 2 {
@@ -720,7 +719,7 @@ func TestPruneOldArchives_RemoveOld(t *testing.T) {
 func TestPruneOldArchives_KeepAll(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.KeepArchives = 10
+	cmd.GetAppConf().ConfigSchema.KeepArchives = 10
 	defer resetGlobals()
 
 	for i := 0; i < 3; i++ {
@@ -730,7 +729,7 @@ func TestPruneOldArchives_KeepAll(t *testing.T) {
 		}
 	}
 
-	pruneOldArchives("tar")
+	cmd.PruneOldArchives("tar")
 
 	matches, _ := filepath.Glob(filepath.Join(dir, "mnemosync-backup-*.tar.gz"))
 	if len(matches) != 3 {
@@ -741,7 +740,7 @@ func TestPruneOldArchives_KeepAll(t *testing.T) {
 func TestPruneOldArchives_Zip(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.KeepArchives = 1
+	cmd.GetAppConf().ConfigSchema.KeepArchives = 1
 	defer resetGlobals()
 
 	for i := 0; i < 3; i++ {
@@ -751,7 +750,7 @@ func TestPruneOldArchives_Zip(t *testing.T) {
 		}
 	}
 
-	pruneOldArchives("zip")
+	cmd.PruneOldArchives("zip")
 
 	matches, _ := filepath.Glob(filepath.Join(dir, "mnemosync-backup-*.zip"))
 	if len(matches) != 1 {
@@ -762,10 +761,10 @@ func TestPruneOldArchives_Zip(t *testing.T) {
 func TestPruneOldArchives_KeepZero(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.KeepArchives = 0
+	cmd.GetAppConf().ConfigSchema.KeepArchives = 0
 	defer resetGlobals()
 
-	pruneOldArchives("tar")
+	cmd.PruneOldArchives("tar")
 }
 
 func TestCleanupStaging(t *testing.T) {
@@ -781,7 +780,7 @@ func TestCleanupStaging(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cleanupStaging(staging)
+	cmd.CleanupStaging(staging)
 
 	entries, _ := os.ReadDir(staging)
 	if len(entries) != 0 {
@@ -790,7 +789,7 @@ func TestCleanupStaging(t *testing.T) {
 }
 
 func TestCleanupStaging_NonExistent(t *testing.T) {
-	cleanupStaging("/tmp/nonexistent-staging-dir-xyz-12345")
+	cmd.CleanupStaging("/tmp/nonexistent-staging-dir-xyz-12345")
 }
 
 func TestCreateTarArchive(t *testing.T) {
@@ -805,7 +804,7 @@ func TestCreateTarArchive(t *testing.T) {
 
 	dstPath := filepath.Join(dir, "archive.tar.gz")
 
-	err := createTarArchive(srcDir, dstPath)
+	err := cmd.CreateTarArchive(srcDir, dstPath)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -827,7 +826,7 @@ func TestCreateZipArchive(t *testing.T) {
 
 	dstPath := filepath.Join(dir, "archive.zip")
 
-	err := createZipArchive(srcDir, dstPath)
+	err := cmd.CreateZipArchive(srcDir, dstPath)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -842,7 +841,7 @@ func TestEnsureGitignore(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	err := ensureGitignore()
+	err := cmd.EnsureGitignore()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -878,9 +877,9 @@ func TestSaveConfig(t *testing.T) {
 		}
 	}()
 
-	appConf.ConfigSchema.ConfigPath = filepath.Join(dir, "config.yaml")
+	cmd.GetAppConf().ConfigSchema.ConfigPath = filepath.Join(dir, "config.yaml")
 
-	saveConfig()
+	cmd.SaveConfig()
 
 	configPath := filepath.Join(dir, "config.yaml")
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
@@ -890,15 +889,15 @@ func TestSaveConfig(t *testing.T) {
 
 func TestRunGit(t *testing.T) {
 	dir := t.TempDir()
-	appConf = &config.MnemoConf{
+	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			RepoPath: dir,
 			IsInit:   true,
 		},
-	}
+	})
 	defer resetGlobals()
 
-	err := runGit("--version")
+	err := cmd.RunGit("--version")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -907,7 +906,7 @@ func TestRunGit(t *testing.T) {
 func TestEnsureLfsTracking_SmallFile(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.LfsThresholdMb = 100
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 100
 	defer resetGlobals()
 
 	archivePath := filepath.Join(dir, "archive.tar.gz")
@@ -915,7 +914,7 @@ func TestEnsureLfsTracking_SmallFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := ensureLfsTracking(archivePath)
+	err := cmd.EnsureLfsTracking(archivePath)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -924,7 +923,7 @@ func TestEnsureLfsTracking_SmallFile(t *testing.T) {
 func TestEnsureLfsTracking_NoLFS(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.LfsThresholdMb = 0
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 0
 	defer resetGlobals()
 
 	archivePath := filepath.Join(dir, "archive.tar.gz")
@@ -932,7 +931,7 @@ func TestEnsureLfsTracking_NoLFS(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := ensureLfsTracking(archivePath)
+	err := cmd.EnsureLfsTracking(archivePath)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -941,7 +940,7 @@ func TestEnsureLfsTracking_NoLFS(t *testing.T) {
 func TestEnsureLfsTracking_NoGitLFSBinary(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.LfsThresholdMb = 1
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 1
 	defer resetGlobals()
 
 	archivePath := filepath.Join(dir, "archive.tar.gz")
@@ -950,7 +949,7 @@ func TestEnsureLfsTracking_NoGitLFSBinary(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := ensureLfsTracking(archivePath)
+	err := cmd.EnsureLfsTracking(archivePath)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -959,7 +958,7 @@ func TestEnsureLfsTracking_NoGitLFSBinary(t *testing.T) {
 func TestEnsureLfsTracking_AlreadyTracked(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.LfsThresholdMb = 1
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 1
 	defer resetGlobals()
 
 	archivePath := filepath.Join(dir, "mnemosync-backup-20060102-150405.tar.gz")
@@ -973,7 +972,7 @@ func TestEnsureLfsTracking_AlreadyTracked(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := ensureLfsTracking(archivePath)
+	err := cmd.EnsureLfsTracking(archivePath)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -982,7 +981,7 @@ func TestEnsureLfsTracking_AlreadyTracked(t *testing.T) {
 func TestEnsureLfsTracking_Zip(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.LfsThresholdMb = 1
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 1
 	defer resetGlobals()
 
 	archivePath := filepath.Join(dir, "mnemosync-backup-20060102-150405.zip")
@@ -996,7 +995,7 @@ func TestEnsureLfsTracking_Zip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err := ensureLfsTracking(archivePath)
+	err := cmd.EnsureLfsTracking(archivePath)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1020,7 +1019,7 @@ func TestExecute(t *testing.T) {
 	done := make(chan bool)
 	go func() {
 		defer func() { _ = recover() }()
-		Execute(cfg, ds)
+		cmd.Execute(cfg, ds)
 		done <- true
 	}()
 
@@ -1049,14 +1048,14 @@ func TestHealthCmd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	appConf = &config.MnemoConf{
+	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			ConfigPath: configPath,
 			RepoPath:   dir,
 			DbPath:     filepath.Join(dir, "state.json"),
 			IsInit:     true,
 		},
-	}
+	})
 	defer resetGlobals()
 
 	stdoutBak := os.Stdout
@@ -1069,7 +1068,7 @@ func TestHealthCmd(t *testing.T) {
 	done := make(chan bool)
 	go func() {
 		defer func() { _ = recover() }()
-		_ = rootCmd.Execute()
+		_ = cmd.RootCmd.Execute()
 		done <- true
 	}()
 
@@ -1093,27 +1092,27 @@ func TestHealthCmd(t *testing.T) {
 
 func TestPruneStaging_NoStagingDirExists(t *testing.T) {
 	dir := t.TempDir()
-	appConf = &config.MnemoConf{
+	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			RepoPath: dir,
 		},
-	}
+	})
 	defer resetGlobals()
 
-	pruneStaging()
+	cmd.PruneStaging()
 }
 
 func TestPruneOldArchives_GlobError(t *testing.T) {
 	dir := t.TempDir()
-	appConf = &config.MnemoConf{
+	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			RepoPath:     dir,
 			KeepArchives: 3,
 		},
-	}
+	})
 	defer resetGlobals()
 
-	pruneOldArchives("tar")
+	cmd.PruneOldArchives("tar")
 }
 
 func TestEnsureGitignoreInDir_SymlinkDir(t *testing.T) {
@@ -1125,7 +1124,7 @@ func TestEnsureGitignoreInDir_SymlinkDir(t *testing.T) {
 	_ = os.Chmod(gitignorePath, 0000)
 	defer func() { _ = os.Chmod(gitignorePath, 0644) }()
 
-	err := ensureGitignoreInDir(dir)
+	err := cmd.EnsureGitignoreInDir(dir)
 	if err == nil {
 		t.Error("expected error when .gitignore is not writable")
 	}
@@ -1134,23 +1133,23 @@ func TestEnsureGitignoreInDir_SymlinkDir(t *testing.T) {
 func TestEnsureLfsTracking_NonExistentArchive(t *testing.T) {
 	dir := t.TempDir()
 	setTestGlobals(dir)
-	appConf.ConfigSchema.LfsThresholdMb = 1
+	cmd.GetAppConf().ConfigSchema.LfsThresholdMb = 1
 	defer resetGlobals()
 
 	archivePath := filepath.Join(dir, "nonexistent.tar.gz")
 
-	err := ensureLfsTracking(archivePath)
+	err := cmd.EnsureLfsTracking(archivePath)
 	if err == nil {
 		t.Error("expected error for non-existent archive")
 	}
 }
 
 func TestDisplayManPage_PagerFallback(t *testing.T) {
-	appConf = &config.MnemoConf{
+	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			AppVersion: "0.1.0",
 		},
-	}
+	})
 	defer resetGlobals()
 
 	origPager := os.Getenv("PAGER")
@@ -1161,7 +1160,7 @@ func TestDisplayManPage_PagerFallback(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	displayManPage()
+	cmd.DisplayManPage()
 
 	_ = w.Close()
 	os.Stdout = stdoutBak
@@ -1186,16 +1185,16 @@ func TestSaveConfig_WithHOME(t *testing.T) {
 	defer func() { _ = os.Setenv("MMSYNC_CONF", prevMMSync) }()
 
 	setTestGlobals(dir)
-	appConf.ConfigSchema.ConfigPath = filepath.Join(dir, ".config/mmsync/config.yaml")
+	cmd.GetAppConf().ConfigSchema.ConfigPath = filepath.Join(dir, ".config/mmsync/config.yaml")
 
 	_ = os.MkdirAll(filepath.Join(dir, ".config/mmsync"), 0755)
-	if err := os.WriteFile(appConf.ConfigSchema.ConfigPath, []byte("old: data"), 0644); err != nil {
+	if err := os.WriteFile(cmd.GetAppConf().ConfigSchema.ConfigPath, []byte("old: data"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	saveConfig()
+	cmd.SaveConfig()
 
-	data, _ := os.ReadFile(appConf.ConfigSchema.ConfigPath)
+	data, _ := os.ReadFile(cmd.GetAppConf().ConfigSchema.ConfigPath)
 	if !strings.Contains(string(data), "config_schema") {
 		t.Error("expected saved config to contain config_schema")
 	}
@@ -1208,7 +1207,7 @@ func TestProcessRepoPath_TildeHomeDirErr(t *testing.T) {
 	_ = os.Unsetenv("HOME")
 	defer func() { _ = os.Setenv("HOME", realHome) }()
 
-	_, err := processRepoPath("~/test")
+	_, err := cmd.ProcessRepoPath("~/test")
 	if err == nil {
 		t.Error("expected error when HOME is not set")
 	}
@@ -1223,7 +1222,7 @@ func TestResolveAndValidatePath_TildeHomeErr(t *testing.T) {
 	_ = os.Unsetenv("HOME")
 	defer func() { _ = os.Setenv("HOME", realHome) }()
 
-	_, err := resolveAndValidatePath("~/test")
+	_, err := cmd.ResolveAndValidatePath("~/test")
 	if err == nil {
 		t.Error("expected error when HOME is not set")
 	}
@@ -1234,14 +1233,14 @@ func TestPathCompleter_TildeHomeErr(t *testing.T) {
 	_ = os.Unsetenv("HOME")
 	defer func() { _ = os.Setenv("HOME", realHome) }()
 
-	suggestions := pathCompleter("~")
+	suggestions := cmd.PathCompleter("~")
 	if suggestions != nil {
 		t.Error("expected nil when HOME is not set")
 	}
 }
 
 func TestPathCompleter_NonExistentDir(t *testing.T) {
-	suggestions := pathCompleter("/nonexistent-path-xyz/")
+	suggestions := cmd.PathCompleter("/nonexistent-path-xyz/")
 	if suggestions != nil {
 		t.Errorf("expected nil, got %v", suggestions)
 	}

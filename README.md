@@ -1,5 +1,6 @@
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/bladeacer/mnemosync?style=for-the-badge&logo=go)
 ![GitHub License](https://img.shields.io/github/license/bladeacer/mnemosync?style=for-the-badge)
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/bladeacer/mmsync)](https://goreportcard.com/report/github.com/bladeacer/mmsync)
 ![Coverage](coverage.svg)
 
@@ -9,6 +10,15 @@ Short for mnemosync. A CLI tool that lets you add folders to backup manually to
 a target Git repository.
 
 The name is inspired by the Greek Goddess of memory Mnemosyne.
+
+## Prerequisites
+
+These tools must be installed and available in your `$PATH`:
+
+- **[git](https://git-scm.com/downloads)** — version control
+- **[rsync](https://rsync.samba.org/download.html)** — staging mirroring (pre-installed on macOS and most Linux distros; on Windows use [MSYS2](https://www.msys2.org/) or [cwRsync](https://www.itefix.net/cwrsync))
+- **[tar](https://www.gnu.org/software/tar/)** or **[zip](https://infozip.sourceforge.net/)** — at least one archiver (pre-installed on macOS and Linux; on Windows use [MSYS2](https://www.msys2.org/))
+- **[git-lfs](https://git-lfs.com/)** — optional, auto-configured for archives exceeding `lfs_threshold_mb`
 
 ## Installation
 
@@ -132,15 +142,6 @@ The configuration file is created at `~/.config/mmsync/config.yaml` (or
 | `keep_archives` | `5` | Number of recent archives to keep in the repo |
 | `lfs_threshold_mb` | `5` | Archive size threshold to auto-configure Git LFS |
 
-## Required dependencies
-
-- `git` — version control
-- `rsync` — staging mirroring (pre-installed on macOS and most Linux distros; on
-  Windows use [MSYS2](https://www.msys2.org/) or [cwRsync](https://www.itefix.net/cwrsync))
-- `tar` or `zip` — at least one archiver must be available (pre-installed on
-  macOS and Linux; on Windows use [MSYS2](https://www.msys2.org/))
-- `git-lfs` — optional, auto-configured for archives exceeding `lfs_threshold_mb`
-
 ## Development
 
 ```bash
@@ -201,4 +202,12 @@ You can find the [license file here](./LICENSE).
 
 ## Credits
 
-This CLI was made possible by [Cobra CLI](https://github.com/spf13/cobra).
+This CLI was made possible by:
+
+- [Cobra CLI](https://github.com/spf13/cobra) — CLI framework
+- [peterh/liner](https://github.com/peterh/liner) — interactive prompt with tab-completion
+- [muesli/mango-cobra](https://github.com/muesli/mango-cobra) + [muesli/roff](https://github.com/muesli/roff) — man page generation
+- [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) — YAML marshalling
+- [golangci-lint](https://golangci-lint.run) — linting
+- [GoReleaser](https://goreleaser.com) — release automation
+- [go-test-coverage](https://github.com/vladopajic/go-test-coverage) — coverage badge

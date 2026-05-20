@@ -1,4 +1,4 @@
-package main
+package main_test
 
 import (
 	"os"
@@ -11,8 +11,7 @@ import (
 func buildBinary(t *testing.T, dir string) string {
 	t.Helper()
 	binaryPath := filepath.Join(dir, "mns-test")
-	cmd := exec.Command("go", "build", "-o", binaryPath, ".")
-	cmd.Dir = "."
+	cmd := exec.Command("go", "build", "-o", binaryPath, "github.com/bladeacer/mmsync")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("failed to build binary: %v\nOutput: %s", err, string(out))
