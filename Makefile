@@ -26,12 +26,16 @@ gowatch: ## Start gowatch for hot-reload development
 snapshot: ## Test goreleaser locally (builds all platforms)
 	goreleaser release --snapshot --clean
 
-tag: ## Create an annotated git tag for a new release
+tag: ## Create (or push) an annotated git tag for a new release
 	@CURRENT=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"); \
 	MAJOR=$$(echo "$$CURRENT" | sed 's/^v//' | cut -d. -f1); \
 	MINOR=$$(echo "$$CURRENT" | sed 's/^v//' | cut -d. -f2); \
 	SUGGEST="v$$MAJOR.$$(($$MINOR + 1)).0"; \
 	read -p "Enter version [$$SUGGEST]: " TAG; \
 	TAG=$${TAG:-$$SUGGEST}; \
-	git tag -a "$$TAG" -m "Release $$TAG" && \
-	echo "Created tag $$TAG. Push with: git push origin $$TAG"
+	if git rev-parse "$$TAG" >/dev/null 2>&1; then \
+		echo "Tag $$TAG already exists, pushing..."; \
+	else \
+		git tag -a "$$TAG" -m "Release $$TAG" && echo "Created tag $$TAG."; \
+	fi; \
+	git push origin "$$TAG"
