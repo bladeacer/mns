@@ -15,13 +15,13 @@ func withFakeHome(t *testing.T, fn func(homeDir string)) {
 	// Save real HOME and set a fake one so ResolveConfigPath
 	// points into the temp dir with no pre-existing config.
 	realHome := os.Getenv("HOME")
-	os.Setenv("HOME", fakeHome)
+	_ = os.Setenv("HOME", fakeHome)
 	prevMMSync := os.Getenv("MMSYNC_CONF")
-	os.Unsetenv("MMSYNC_CONF")
+	_ = os.Unsetenv("MMSYNC_CONF")
 
 	defer func() {
-		os.Setenv("HOME", realHome)
-		os.Setenv("MMSYNC_CONF", prevMMSync)
+		_ = os.Setenv("HOME", realHome)
+		_ = os.Setenv("MMSYNC_CONF", prevMMSync)
 	}()
 
 	fn(fakeHome)
@@ -236,8 +236,8 @@ func TestLoadConfig_ReadError(t *testing.T) {
 		if err := os.WriteFile(configPath, []byte("valid: yaml"), 0000); err != nil {
 			t.Fatal(err)
 		}
-		os.Chmod(configPath, 0000)
-		defer os.Chmod(configPath, 0644)
+		_ = os.Chmod(configPath, 0000)
+		defer func() { _ = os.Chmod(configPath, 0644) }()
 
 		_, err := confighandler.LoadConfig()
 		if err == nil {

@@ -12,6 +12,8 @@ import (
 	"github.com/bladeacer/mmsync/config"
 )
 
+var _ = io.Copy
+
 func resetGlobals() {
 	appConf = nil
 	dataStore = nil
@@ -91,7 +93,9 @@ func TestEnsureGitignoreInDir_AppendsToExisting(t *testing.T) {
 func TestEnsureGitignoreInDir_EmptyFile(t *testing.T) {
 	dir := t.TempDir()
 	gitignorePath := filepath.Join(dir, ".gitignore")
-	os.WriteFile(gitignorePath, []byte{}, 0644)
+	if err := os.WriteFile(gitignorePath, []byte{}, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := ensureGitignoreInDir(dir); err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -106,9 +110,11 @@ func TestEnsureGitignoreInDir_EmptyFile(t *testing.T) {
 func TestEnsureGitignoreInDir_ReadError(t *testing.T) {
 	dir := t.TempDir()
 	gitignorePath := filepath.Join(dir, ".gitignore")
-	os.WriteFile(gitignorePath, []byte("test"), 0000)
-	os.Chmod(gitignorePath, 0000)
-	defer os.Chmod(gitignorePath, 0644)
+	if err := os.WriteFile(gitignorePath, []byte("test"), 0000); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.Chmod(gitignorePath, 0000)
+	defer func() { _ = os.Chmod(gitignorePath, 0644) }()
 
 	err := ensureGitignoreInDir(dir)
 	if err == nil {
@@ -170,8 +176,10 @@ func TestProcessRepoPath_TildePath(t *testing.T) {
 	}
 
 	subdir := filepath.Join(homeDir, "test-subdir-process")
-	os.Mkdir(subdir, 0755)
-	defer os.RemoveAll(subdir)
+	if err := os.Mkdir(subdir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.RemoveAll(subdir) }()
 
 	result, err := processRepoPath("~/test-subdir-process")
 	if err != nil {
@@ -192,7 +200,9 @@ func TestProcessRepoPath_NotExist(t *testing.T) {
 func TestProcessRepoPath_NotDir(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "file.txt")
-	os.WriteFile(filePath, []byte("test"), 0644)
+	if err := os.WriteFile(filePath, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := processRepoPath(filePath)
 	if err == nil {
@@ -202,11 +212,8 @@ func TestProcessRepoPath_NotDir(t *testing.T) {
 
 func TestProcessRepoPath_TildeHomeError(t *testing.T) {
 	orig := os.Getenv("HOME")
-	os.Unsetenv("HOME")
-	defer os.Setenv("HOME", orig)
-	homeOrig := os.Getenv("HOME")
-
-	_ = homeOrig
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", orig) }()
 }
 
 func TestCheckBinary_Found(t *testing.T) {
@@ -233,10 +240,12 @@ func TestCheckBinary_NotFoundOptional(t *testing.T) {
 func TestCheckBinary_WithVersionError(t *testing.T) {
 	dir := t.TempDir()
 	scriptPath := filepath.Join(dir, "failversion.sh")
-	os.WriteFile(scriptPath, []byte("#!/bin/sh\necho \"error msg\"\nexit 1\n"), 0755)
+	if err := os.WriteFile(scriptPath, []byte("#!/bin/sh\necho \"error msg\"\nexit 1\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
 	origPath := os.Getenv("PATH")
-	os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath)
-	defer os.Setenv("PATH", origPath)
+	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath)
+	defer func() { _ = os.Setenv("PATH", origPath) }()
 
 	result := checkBinary("failversion.sh", false, false)
 	if !strings.Contains(result, "[WARNING] Version check failed") {
@@ -247,7 +256,9 @@ func TestCheckBinary_WithVersionError(t *testing.T) {
 func TestResolveAndValidatePath_Absolute(t *testing.T) {
 	dir := t.TempDir()
 	subdir := filepath.Join(dir, "target")
-	os.Mkdir(subdir, 0755)
+	if err := os.Mkdir(subdir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	setTestGlobals(dir)
 	appConf.ConfigSchema.ConfigPath = filepath.Join(dir, "config", "config.yaml")
 	defer resetGlobals()
@@ -296,7 +307,9 @@ func TestResolveAndValidatePath_IsFile(t *testing.T) {
 	defer resetGlobals()
 
 	filePath := filepath.Join(dir, "file.txt")
-	os.WriteFile(filePath, []byte("test"), 0644)
+	if err := os.WriteFile(filePath, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := resolveAndValidatePath(filePath)
 	if err == nil {
@@ -320,7 +333,9 @@ func TestResolveAndValidatePath_CircularRepoRef(t *testing.T) {
 func TestResolveAndValidatePath_CircularConfigRef(t *testing.T) {
 	dir := t.TempDir()
 	configDir := filepath.Join(dir, ".config")
-	os.MkdirAll(configDir, 0755)
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	setTestGlobals(dir)
 	appConf.ConfigSchema.ConfigPath = filepath.Join(configDir, "config.yaml")
 	defer resetGlobals()
@@ -334,7 +349,9 @@ func TestResolveAndValidatePath_CircularConfigRef(t *testing.T) {
 func TestResolveAndValidatePath_MnemosyncDir(t *testing.T) {
 	dir := t.TempDir()
 	mnemosyncDir := filepath.Join(dir, "mnemosync")
-	os.Mkdir(mnemosyncDir, 0755)
+	if err := os.Mkdir(mnemosyncDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	setTestGlobals(dir)
 	defer resetGlobals()
 
@@ -420,7 +437,7 @@ func TestAddDirectoryEntry_DuplicatePath(t *testing.T) {
 	setTestGlobals(dir)
 	defer resetGlobals()
 
-	addDirectoryEntry(dir, "alias1")
+	_ = addDirectoryEntry(dir, "alias1")
 	err := addDirectoryEntry(dir, "alias2")
 	if err == nil {
 		t.Error("expected error for duplicate path")
@@ -434,10 +451,14 @@ func TestAddDirectoryEntry_DuplicateAlias(t *testing.T) {
 
 	subdir1 := filepath.Join(dir, "dir1")
 	subdir2 := filepath.Join(dir, "dir2")
-	os.Mkdir(subdir1, 0755)
-	os.Mkdir(subdir2, 0755)
+	if err := os.Mkdir(subdir1, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(subdir2, 0755); err != nil {
+		t.Fatal(err)
+	}
 
-	addDirectoryEntry(subdir1, "samealias")
+	_ = addDirectoryEntry(subdir1, "samealias")
 	err := addDirectoryEntry(subdir2, "samealias")
 	if err == nil {
 		t.Error("expected error for duplicate alias")
@@ -552,7 +573,9 @@ func TestSelectDirs_Deduplicate(t *testing.T) {
 
 func TestPathCompleter_Dir(t *testing.T) {
 	dir := t.TempDir()
-	os.Mkdir(filepath.Join(dir, "subdir"), 0755)
+	if err := os.Mkdir(filepath.Join(dir, "subdir"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	suggestions := pathCompleter(dir + "/sub")
 	if len(suggestions) == 0 {
@@ -593,8 +616,12 @@ func TestPathCompleter_TildePath(t *testing.T) {
 
 func TestPathCompleter_HiddenFiles(t *testing.T) {
 	dir := t.TempDir()
-	os.Mkdir(filepath.Join(dir, ".hidden"), 0755)
-	os.Mkdir(filepath.Join(dir, "visible"), 0755)
+	if err := os.Mkdir(filepath.Join(dir, ".hidden"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "visible"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	suggestions := pathCompleter(dir + "/")
 	hasVisible := false
@@ -647,9 +674,15 @@ func TestPruneStaging_RemovesOrphans(t *testing.T) {
 	defer resetGlobals()
 
 	staging := stagingDir()
-	os.MkdirAll(staging, 0755)
-	os.Mkdir(filepath.Join(staging, "orphan"), 0755)
-	os.Mkdir(filepath.Join(staging, "tracked"), 0755)
+	if err := os.MkdirAll(staging, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(staging, "orphan"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(staging, "tracked"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	dataStore.AddDir(config.DirData{TargetPath: "/tmp/tracked", Alias: "tracked"})
 
@@ -671,7 +704,9 @@ func TestPruneOldArchives_RemoveOld(t *testing.T) {
 
 	for i := 0; i < 4; i++ {
 		path := filepath.Join(dir, "mnemosync-backup-20060102-15040"+string(rune('0'+i))+".tar.gz")
-		os.WriteFile(path, []byte("test"), 0644)
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	pruneOldArchives("tar")
@@ -690,7 +725,9 @@ func TestPruneOldArchives_KeepAll(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		path := filepath.Join(dir, "mnemosync-backup-20060102-15040"+string(rune('0'+i))+".tar.gz")
-		os.WriteFile(path, []byte("test"), 0644)
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	pruneOldArchives("tar")
@@ -709,7 +746,9 @@ func TestPruneOldArchives_Zip(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		path := filepath.Join(dir, "mnemosync-backup-20060102-15040"+string(rune('0'+i))+".zip")
-		os.WriteFile(path, []byte("test"), 0644)
+		if err := os.WriteFile(path, []byte("test"), 0644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	pruneOldArchives("zip")
@@ -732,9 +771,15 @@ func TestPruneOldArchives_KeepZero(t *testing.T) {
 func TestCleanupStaging(t *testing.T) {
 	dir := t.TempDir()
 	staging := filepath.Join(dir, ".mnemosync", "staging")
-	os.MkdirAll(staging, 0755)
-	os.WriteFile(filepath.Join(staging, "file.txt"), []byte("test"), 0644)
-	os.Mkdir(filepath.Join(staging, "subdir"), 0755)
+	if err := os.MkdirAll(staging, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(staging, "file.txt"), []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(staging, "subdir"), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	cleanupStaging(staging)
 
@@ -751,8 +796,12 @@ func TestCleanupStaging_NonExistent(t *testing.T) {
 func TestCreateTarArchive(t *testing.T) {
 	dir := t.TempDir()
 	srcDir := filepath.Join(dir, "src")
-	os.Mkdir(srcDir, 0755)
-	os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("hello"), 0644)
+	if err := os.Mkdir(srcDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("hello"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	dstPath := filepath.Join(dir, "archive.tar.gz")
 
@@ -769,8 +818,12 @@ func TestCreateTarArchive(t *testing.T) {
 func TestCreateZipArchive(t *testing.T) {
 	dir := t.TempDir()
 	srcDir := filepath.Join(dir, "src")
-	os.Mkdir(srcDir, 0755)
-	os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("hello"), 0644)
+	if err := os.Mkdir(srcDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(srcDir, "test.txt"), []byte("hello"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	dstPath := filepath.Join(dir, "archive.zip")
 
@@ -804,7 +857,7 @@ func TestSaveConfig(t *testing.T) {
 	dir := t.TempDir()
 
 	prevMMSync := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", dir)
+	_ = os.Setenv("MMSYNC_CONF", dir)
 
 	homeDir, _ := os.UserHomeDir()
 	backupDir := filepath.Join(dir, ".backup-mmsync")
@@ -812,16 +865,16 @@ func TestSaveConfig(t *testing.T) {
 	hadOldConfig := false
 	if _, err := os.Stat(oldConfigDir); err == nil {
 		hadOldConfig = true
-		os.Rename(oldConfigDir, backupDir)
+		_ = os.Rename(oldConfigDir, backupDir)
 	}
 
 	setTestGlobals(dir)
 	defer func() {
 		resetGlobals()
-		os.Setenv("MMSYNC_CONF", prevMMSync)
+		_ = os.Setenv("MMSYNC_CONF", prevMMSync)
 		if hadOldConfig {
-			os.RemoveAll(oldConfigDir)
-			os.Rename(backupDir, oldConfigDir)
+			_ = os.RemoveAll(oldConfigDir)
+			_ = os.Rename(backupDir, oldConfigDir)
 		}
 	}()
 
@@ -858,7 +911,9 @@ func TestEnsureLfsTracking_SmallFile(t *testing.T) {
 	defer resetGlobals()
 
 	archivePath := filepath.Join(dir, "archive.tar.gz")
-	os.WriteFile(archivePath, []byte("small"), 0644)
+	if err := os.WriteFile(archivePath, []byte("small"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := ensureLfsTracking(archivePath)
 	if err != nil {
@@ -873,7 +928,9 @@ func TestEnsureLfsTracking_NoLFS(t *testing.T) {
 	defer resetGlobals()
 
 	archivePath := filepath.Join(dir, "archive.tar.gz")
-	os.WriteFile(archivePath, []byte("test"), 0644)
+	if err := os.WriteFile(archivePath, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := ensureLfsTracking(archivePath)
 	if err != nil {
@@ -889,7 +946,9 @@ func TestEnsureLfsTracking_NoGitLFSBinary(t *testing.T) {
 
 	archivePath := filepath.Join(dir, "archive.tar.gz")
 	largeData := make([]byte, 2*1024*1024)
-	os.WriteFile(archivePath, largeData, 0644)
+	if err := os.WriteFile(archivePath, largeData, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := ensureLfsTracking(archivePath)
 	if err != nil {
@@ -905,10 +964,14 @@ func TestEnsureLfsTracking_AlreadyTracked(t *testing.T) {
 
 	archivePath := filepath.Join(dir, "mnemosync-backup-20060102-150405.tar.gz")
 	largeData := make([]byte, 2*1024*1024)
-	os.WriteFile(archivePath, largeData, 0644)
+	if err := os.WriteFile(archivePath, largeData, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	attrPath := filepath.Join(dir, ".gitattributes")
-	os.WriteFile(attrPath, []byte("mnemosync-backup-*.tar.gz filter=lfs diff=lfs merge=lfs -text\n"), 0644)
+	if err := os.WriteFile(attrPath, []byte("mnemosync-backup-*.tar.gz filter=lfs diff=lfs merge=lfs -text\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := ensureLfsTracking(archivePath)
 	if err != nil {
@@ -924,10 +987,14 @@ func TestEnsureLfsTracking_Zip(t *testing.T) {
 
 	archivePath := filepath.Join(dir, "mnemosync-backup-20060102-150405.zip")
 	largeData := make([]byte, 2*1024*1024)
-	os.WriteFile(archivePath, largeData, 0644)
+	if err := os.WriteFile(archivePath, largeData, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	attrPath := filepath.Join(dir, ".gitattributes")
-	os.WriteFile(attrPath, []byte("mnemosync-backup-*.zip filter=lfs diff=lfs merge=lfs -text\n"), 0644)
+	if err := os.WriteFile(attrPath, []byte("mnemosync-backup-*.zip filter=lfs diff=lfs merge=lfs -text\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := ensureLfsTracking(archivePath)
 	if err != nil {
@@ -952,7 +1019,7 @@ func TestExecute(t *testing.T) {
 
 	done := make(chan bool)
 	go func() {
-		defer func() { recover() }()
+		defer func() { _ = recover() }()
 		Execute(cfg, ds)
 		done <- true
 	}()
@@ -962,12 +1029,12 @@ func TestExecute(t *testing.T) {
 	case <-time.After(2 * time.Second):
 	}
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = stdoutBak
 	os.Args = origArgs
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if !strings.Contains(output, "mnemosync") {
@@ -978,7 +1045,9 @@ func TestExecute(t *testing.T) {
 func TestHealthCmd(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.yaml")
-	os.WriteFile(configPath, []byte("config: test"), 0644)
+	if err := os.WriteFile(configPath, []byte("config: test"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	appConf = &config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
@@ -999,8 +1068,8 @@ func TestHealthCmd(t *testing.T) {
 
 	done := make(chan bool)
 	go func() {
-		defer func() { recover() }()
-		rootCmd.Execute()
+		defer func() { _ = recover() }()
+		_ = rootCmd.Execute()
 		done <- true
 	}()
 
@@ -1009,12 +1078,12 @@ func TestHealthCmd(t *testing.T) {
 	case <-time.After(2 * time.Second):
 	}
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = stdoutBak
 	os.Args = origArgs
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if !strings.Contains(output, "Health Check") {
@@ -1050,9 +1119,11 @@ func TestPruneOldArchives_GlobError(t *testing.T) {
 func TestEnsureGitignoreInDir_SymlinkDir(t *testing.T) {
 	dir := t.TempDir()
 	gitignorePath := filepath.Join(dir, ".gitignore")
-	os.WriteFile(gitignorePath, []byte("existing content\n"), 0000)
-	os.Chmod(gitignorePath, 0000)
-	defer os.Chmod(gitignorePath, 0644)
+	if err := os.WriteFile(gitignorePath, []byte("existing content\n"), 0000); err != nil {
+		t.Fatal(err)
+	}
+	_ = os.Chmod(gitignorePath, 0000)
+	defer func() { _ = os.Chmod(gitignorePath, 0644) }()
 
 	err := ensureGitignoreInDir(dir)
 	if err == nil {
@@ -1083,8 +1154,8 @@ func TestDisplayManPage_PagerFallback(t *testing.T) {
 	defer resetGlobals()
 
 	origPager := os.Getenv("PAGER")
-	os.Setenv("PAGER", "cat")
-	defer os.Setenv("PAGER", origPager)
+	_ = os.Setenv("PAGER", "cat")
+	defer func() { _ = os.Setenv("PAGER", origPager) }()
 
 	stdoutBak := os.Stdout
 	r, w, _ := os.Pipe()
@@ -1092,11 +1163,11 @@ func TestDisplayManPage_PagerFallback(t *testing.T) {
 
 	displayManPage()
 
-	w.Close()
+	_ = w.Close()
 	os.Stdout = stdoutBak
 
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, _ = io.Copy(&buf, r)
 	output := buf.String()
 
 	if !strings.Contains(output, "mns") {
@@ -1107,18 +1178,20 @@ func TestDisplayManPage_PagerFallback(t *testing.T) {
 func TestSaveConfig_WithHOME(t *testing.T) {
 	dir := t.TempDir()
 	realHome := os.Getenv("HOME")
-	os.Setenv("HOME", dir)
-	defer os.Setenv("HOME", realHome)
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Setenv("HOME", realHome) }()
 
 	prevMMSync := os.Getenv("MMSYNC_CONF")
-	os.Unsetenv("MMSYNC_CONF")
-	defer os.Setenv("MMSYNC_CONF", prevMMSync)
+	_ = os.Unsetenv("MMSYNC_CONF")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevMMSync) }()
 
 	setTestGlobals(dir)
 	appConf.ConfigSchema.ConfigPath = filepath.Join(dir, ".config/mmsync/config.yaml")
 
 	_ = os.MkdirAll(filepath.Join(dir, ".config/mmsync"), 0755)
-	os.WriteFile(appConf.ConfigSchema.ConfigPath, []byte("old: data"), 0644)
+	if err := os.WriteFile(appConf.ConfigSchema.ConfigPath, []byte("old: data"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	saveConfig()
 
@@ -1132,8 +1205,8 @@ func TestSaveConfig_WithHOME(t *testing.T) {
 
 func TestProcessRepoPath_TildeHomeDirErr(t *testing.T) {
 	realHome := os.Getenv("HOME")
-	os.Unsetenv("HOME")
-	defer os.Setenv("HOME", realHome)
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", realHome) }()
 
 	_, err := processRepoPath("~/test")
 	if err == nil {
@@ -1147,8 +1220,8 @@ func TestResolveAndValidatePath_TildeHomeErr(t *testing.T) {
 	defer resetGlobals()
 
 	realHome := os.Getenv("HOME")
-	os.Unsetenv("HOME")
-	defer os.Setenv("HOME", realHome)
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", realHome) }()
 
 	_, err := resolveAndValidatePath("~/test")
 	if err == nil {
@@ -1158,8 +1231,8 @@ func TestResolveAndValidatePath_TildeHomeErr(t *testing.T) {
 
 func TestPathCompleter_TildeHomeErr(t *testing.T) {
 	realHome := os.Getenv("HOME")
-	os.Unsetenv("HOME")
-	defer os.Setenv("HOME", realHome)
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", realHome) }()
 
 	suggestions := pathCompleter("~")
 	if suggestions != nil {

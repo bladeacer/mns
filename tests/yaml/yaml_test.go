@@ -94,7 +94,7 @@ func TestSaveConfig_OverwritesExisting(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.yaml")
 
-	os.WriteFile(configPath, []byte("old: data"), 0644)
+	_ = os.WriteFile(configPath, []byte("old: data"), 0644)
 
 	cfg := config.GetMnemoConf()
 	cfg.ConfigSchema.IsInit = true

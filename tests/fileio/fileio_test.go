@@ -11,8 +11,8 @@ import (
 
 func TestResolveConfigPath_Default(t *testing.T) {
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Unsetenv("MMSYNC_CONF")
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Unsetenv("MMSYNC_CONF")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	path := fileio.ResolveConfigPath()
 	if path == "" {
@@ -28,8 +28,8 @@ func TestResolveConfigPath_Default(t *testing.T) {
 
 func TestResolveConfigPath_WithMMSYNCConf(t *testing.T) {
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", "/custom/path")
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Setenv("MMSYNC_CONF", "/custom/path")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	path := fileio.ResolveConfigPath()
 	if !strings.HasPrefix(path, "/custom/path") {
@@ -47,8 +47,8 @@ func TestResolveConfigPath_WithRelativeMMSYNCConf(t *testing.T) {
 	}
 
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", "relative/path")
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Setenv("MMSYNC_CONF", "relative/path")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	path := fileio.ResolveConfigPath()
 	expected := filepath.Join(homeDir, "relative/path", "config.yaml")
@@ -59,8 +59,8 @@ func TestResolveConfigPath_WithRelativeMMSYNCConf(t *testing.T) {
 
 func TestResolveConfigPath_WithMMSYNCConfFile(t *testing.T) {
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", "/custom/path/config.yaml")
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Setenv("MMSYNC_CONF", "/custom/path/config.yaml")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	path := fileio.ResolveConfigPath()
 	if path != "/custom/path/config.yaml" {
@@ -70,8 +70,8 @@ func TestResolveConfigPath_WithMMSYNCConfFile(t *testing.T) {
 
 func TestResolveDbPath_Default(t *testing.T) {
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Unsetenv("MMSYNC_CONF")
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Unsetenv("MMSYNC_CONF")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	path := fileio.ResolveDbPath()
 	if path == "" {
@@ -84,8 +84,8 @@ func TestResolveDbPath_Default(t *testing.T) {
 
 func TestResolveDbPath_WithMMSYNCConf(t *testing.T) {
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", "/custom/path")
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Setenv("MMSYNC_CONF", "/custom/path")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	path := fileio.ResolveDbPath()
 	expected := "/custom/path/mmsync-state.json"
@@ -96,8 +96,8 @@ func TestResolveDbPath_WithMMSYNCConf(t *testing.T) {
 
 func TestMigrateConfigData_NoMigration(t *testing.T) {
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Unsetenv("MMSYNC_CONF")
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Unsetenv("MMSYNC_CONF")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	err := fileio.MigrateConfigData(fileio.ResolveConfigPath())
 	if err != nil {
@@ -110,8 +110,8 @@ func TestMigrateConfigData_WithMMSYNCConfNoOldFile(t *testing.T) {
 	newConfigPath := filepath.Join(dir, "config.yaml")
 
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", dir)
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Setenv("MMSYNC_CONF", dir)
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	err := fileio.MigrateConfigData(newConfigPath)
 	if err != nil {
@@ -126,21 +126,21 @@ func TestMigrateConfigData_MigrationSuccess(t *testing.T) {
 	}
 
 	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
-	os.MkdirAll(oldConfigDir, 0755)
+	_ = os.MkdirAll(oldConfigDir, 0755)
 	oldConfigFile := filepath.Join(oldConfigDir, "config.yaml")
 	oldDbFile := filepath.Join(oldConfigDir, "mmsync-state.json")
 
-	os.WriteFile(oldConfigFile, []byte("old: config"), 0644)
-	os.WriteFile(oldDbFile, []byte("{}"), 0644)
+	_ = os.WriteFile(oldConfigFile, []byte("old: config"), 0644)
+	_ = os.WriteFile(oldDbFile, []byte("{}"), 0644)
 
-	defer os.RemoveAll(oldConfigDir)
+	defer func() { _ = os.RemoveAll(oldConfigDir) }()
 
 	newDir := t.TempDir()
 	newConfigPath := filepath.Join(newDir, "config.yaml")
 
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", newDir)
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Setenv("MMSYNC_CONF", newDir)
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	err = fileio.MigrateConfigData(newConfigPath)
 	if err != nil {
@@ -163,18 +163,18 @@ func TestMigrateConfigData_TargetExists(t *testing.T) {
 	}
 
 	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
-	os.MkdirAll(oldConfigDir, 0755)
+	_ = os.MkdirAll(oldConfigDir, 0755)
 	oldConfigFile := filepath.Join(oldConfigDir, "config.yaml")
-	os.WriteFile(oldConfigFile, []byte("old: config"), 0644)
-	defer os.RemoveAll(oldConfigDir)
+	_ = os.WriteFile(oldConfigFile, []byte("old: config"), 0644)
+	defer func() { _ = os.RemoveAll(oldConfigDir) }()
 
 	newDir := t.TempDir()
 	newConfigPath := filepath.Join(newDir, "config.yaml")
-	os.WriteFile(newConfigPath, []byte("new: config"), 0644)
+	_ = os.WriteFile(newConfigPath, []byte("new: config"), 0644)
 
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", newDir)
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Setenv("MMSYNC_CONF", newDir)
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	err = fileio.MigrateConfigData(newConfigPath)
 	if err == nil {
@@ -189,14 +189,14 @@ func TestMigrateConfigData_OldDirSameAsNew(t *testing.T) {
 	}
 
 	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
-	os.MkdirAll(oldConfigDir, 0755)
-	defer os.RemoveAll(oldConfigDir)
+	_ = os.MkdirAll(oldConfigDir, 0755)
+	defer func() { _ = os.RemoveAll(oldConfigDir) }()
 
 	newConfigPath := filepath.Join(oldConfigDir, "config.yaml")
 
 	prevConf := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", oldConfigDir)
-	defer os.Setenv("MMSYNC_CONF", prevConf)
+	_ = os.Setenv("MMSYNC_CONF", oldConfigDir)
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
 	err = fileio.MigrateConfigData(newConfigPath)
 	if err != nil {

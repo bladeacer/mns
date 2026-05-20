@@ -100,8 +100,8 @@ func TestCheckBinary_NonZeroExit(t *testing.T) {
 		t.Fatal(err)
 	}
 	origPath := os.Getenv("PATH")
-	os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath)
-	defer os.Setenv("PATH", origPath)
+	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath)
+	defer func() { _ = os.Setenv("PATH", origPath) }()
 
 	result := healthcheck.CheckBinary("failing.sh")
 	if !result.Found {
@@ -123,8 +123,8 @@ func TestCheckBinary_VersionOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 	origPath := os.Getenv("PATH")
-	os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath)
-	defer os.Setenv("PATH", origPath)
+	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath)
+	defer func() { _ = os.Setenv("PATH", origPath) }()
 
 	result := healthcheck.CheckBinary("versioner.sh")
 	if !result.Found {
@@ -146,8 +146,8 @@ func TestCheckBinary_MultiLineVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	origPath := os.Getenv("PATH")
-	os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath)
-	defer os.Setenv("PATH", origPath)
+	_ = os.Setenv("PATH", dir+string(os.PathListSeparator)+origPath)
+	defer func() { _ = os.Setenv("PATH", origPath) }()
 
 	result := healthcheck.CheckBinary("multiline.sh")
 	if !result.Found {

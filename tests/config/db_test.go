@@ -13,20 +13,20 @@ func writeConfigDir(t *testing.T) (dir string, cleanup func()) {
 	dir = t.TempDir()
 
 	prevMMSync := os.Getenv("MMSYNC_CONF")
-	os.Setenv("MMSYNC_CONF", dir)
+	_ = os.Setenv("MMSYNC_CONF", dir)
 
 	backupDir := filepath.Join(dir, ".backup-mmsync")
 	homeDir, _ := os.UserHomeDir()
 	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
 	if _, err := os.Stat(oldConfigDir); err == nil {
-		os.Rename(oldConfigDir, backupDir)
+		_ = os.Rename(oldConfigDir, backupDir)
 	}
 
 	cleanup = func() {
-		os.Setenv("MMSYNC_CONF", prevMMSync)
+		_ = os.Setenv("MMSYNC_CONF", prevMMSync)
 		if _, err := os.Stat(backupDir); err == nil {
-			os.RemoveAll(oldConfigDir)
-			os.Rename(backupDir, oldConfigDir)
+			_ = os.RemoveAll(oldConfigDir)
+			_ = os.Rename(backupDir, oldConfigDir)
 		}
 	}
 	return
