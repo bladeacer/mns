@@ -10,6 +10,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var knownSchemaFields = map[string]bool{
+	"config_path":       true,
+	"app_version":       true,
+	"is_init":           true,
+	"repo_path":         true,
+	"db_path":           true,
+	"archiver":          true,
+	"commit_fmt":        true,
+	"respect_gitignore": true,
+	"hist_limit_days":   true,
+	"hist_limit_size_mb": true,
+	"keep_archives":     true,
+	"lfs_threshold_mb":  true,
+}
 
 func LoadConfig() (*config.MnemoConf, error) {
 	configPath := fileio.ResolveConfigPath()
@@ -45,9 +59,34 @@ func LoadConfig() (*config.MnemoConf, error) {
 		if saveErr := yamlwrapper.SaveConfig(tempCfg, configPath); saveErr != nil {
 			return nil, fmt.Errorf("critical error: failed to save repaired configuration: %w", saveErr)
 		}
+		return tempCfg, nil
+	}
+
+	if needsSchemaUpdate(data) {
+		fmt.Fprintf(os.Stderr, "Updating configuration file with new schema fields\n")
+		if saveErr := yamlwrapper.SaveConfig(tempCfg, configPath); saveErr != nil {
+			return nil, fmt.Errorf("critical error: failed to save updated configuration: %w", saveErr)
+		}
 	}
 
 	return tempCfg, nil
+}
+
+func needsSchemaUpdate(data []byte) bool {
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return false
+	}
+	schema, ok := raw["config_schema"].(map[string]interface{})
+	if !ok {
+		return false
+	}
+	for field := range knownSchemaFields {
+		if _, exists := schema[field]; !exists {
+			return true
+		}
+	}
+	return false
 }
 
 
