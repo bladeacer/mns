@@ -29,8 +29,8 @@ func TestGetMnemoConf_ReturnsValidConfig(t *testing.T) {
 	if cfg.ConfigSchema.LfsThresholdMb != 5 {
 		t.Errorf("expected LfsThresholdMb 5, got %d", cfg.ConfigSchema.LfsThresholdMb)
 	}
-	if cfg.ConfigSchema.AppVersion != "0.1.0" {
-		t.Errorf("expected AppVersion '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+	if cfg.ConfigSchema.AppVersion != config.AppVersion {
+		t.Errorf("expected AppVersion '%s', got '%s'", config.AppVersion, cfg.ConfigSchema.AppVersion)
 	}
 	if cfg.ConfigSchema.IsInit != false {
 		t.Error("expected IsInit to default to false")

@@ -859,23 +859,10 @@ func TestSaveConfig(t *testing.T) {
 	prevMMSync := os.Getenv("MMSYNC_CONF")
 	_ = os.Setenv("MMSYNC_CONF", dir)
 
-	homeDir, _ := os.UserHomeDir()
-	backupDir := filepath.Join(dir, ".backup-mmsync")
-	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
-	hadOldConfig := false
-	if _, err := os.Stat(oldConfigDir); err == nil {
-		hadOldConfig = true
-		_ = os.Rename(oldConfigDir, backupDir)
-	}
-
 	setTestGlobals(dir)
 	defer func() {
 		resetGlobals()
 		_ = os.Setenv("MMSYNC_CONF", prevMMSync)
-		if hadOldConfig {
-			_ = os.RemoveAll(oldConfigDir)
-			_ = os.Rename(backupDir, oldConfigDir)
-		}
 	}()
 
 	cmd.GetAppConf().ConfigSchema.ConfigPath = filepath.Join(dir, "config.yaml")
@@ -1092,7 +1079,7 @@ func TestEnsureLfsTracking_GitattributesReadError(t *testing.T) {
 func TestExecute(t *testing.T) {
 	cfg := &config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
-			AppVersion: "0.1.0",
+			AppVersion: config.AppVersion,
 		},
 	}
 	ds := config.GetDataStore()
@@ -1305,7 +1292,7 @@ func TestEnsureLfsTracking_NonExistentArchive(t *testing.T) {
 func TestDisplayManPage_PagerFallback(t *testing.T) {
 	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
-			AppVersion: "0.1.0",
+			AppVersion: config.AppVersion,
 		},
 	})
 	defer resetGlobals()
@@ -1498,7 +1485,7 @@ func TestDisplayManPage_NroffFallback(t *testing.T) {
 
 	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
-			AppVersion: "0.1.0",
+			AppVersion: config.AppVersion,
 		},
 	})
 	defer resetGlobals()
@@ -1554,7 +1541,7 @@ func TestValidateConfig_ValidFile(t *testing.T) {
 	configPath := filepath.Join(dir, "config.yaml")
 	yamlContent := fmt.Sprintf(`config_schema:
   config_path: "%s"
-  app_version: "0.1.0"
+  app_version: "%s"
   is_init: true
   repo_path: "%s"
   db_path: "%s"
@@ -1565,7 +1552,7 @@ func TestValidateConfig_ValidFile(t *testing.T) {
   hist_limit_size_mb: 1024
   keep_archives: 5
   lfs_threshold_mb: 5
-`, configPath, dir, filepath.Join(dir, "mmsync-state.json"))
+`, configPath, config.AppVersion, dir, filepath.Join(dir, "mmsync-state.json"))
 
 	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
 		t.Fatal(err)
@@ -1585,7 +1572,7 @@ func TestValidateConfig_NotInit(t *testing.T) {
 	configPath := filepath.Join(dir, "config.yaml")
 	yamlContent := fmt.Sprintf(`config_schema:
   config_path: "%s"
-  app_version: "0.1.0"
+  app_version: "%s"
   is_init: false
   repo_path: "%s"
   db_path: "%s"
@@ -1596,7 +1583,7 @@ func TestValidateConfig_NotInit(t *testing.T) {
   hist_limit_size_mb: 1024
   keep_archives: 5
   lfs_threshold_mb: 5
-`, configPath, dir, filepath.Join(dir, "mmsync-state.json"))
+`, configPath, config.AppVersion, dir, filepath.Join(dir, "mmsync-state.json"))
 
 	if err := os.MkdirAll(filepath.Dir(configPath), 0755); err != nil {
 		t.Fatal(err)

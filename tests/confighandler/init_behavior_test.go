@@ -92,7 +92,7 @@ func TestAtomicWrite_ConfigAndDbUseSameWrite(t *testing.T) {
 	configPath := filepath.Join(dir, "config.yaml")
 	dbPath := filepath.Join(dir, "state.json")
 
-	configData := []byte("config_schema:\n  app_version: \"0.1.0\"\n")
+	configData := []byte("config_schema:\n  app_version: \"" + config.AppVersion + "\"\n")
 	dbData := []byte("{\"current_id\": 1}")
 
 	if err := fileio.AtomicWriteFile(configPath, configData, 0644); err != nil {
@@ -120,7 +120,7 @@ func TestSaveConfig_PreservesExtraFieldsViaMerge(t *testing.T) {
 
 	originalContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + dir + `"
   db_path: "` + dbPath + `"

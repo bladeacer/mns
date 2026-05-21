@@ -8,6 +8,7 @@ import (
 
 	"github.com/bladeacer/mns/config"
 	"github.com/bladeacer/mns/internal/confighandler"
+	"github.com/bladeacer/mns/internal/fileio"
 )
 
 func withFakeHome(t *testing.T, fn func(homeDir string)) {
@@ -60,10 +61,10 @@ func TestLoadConfig_ValidYAML(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -103,7 +104,7 @@ func TestLoadConfig_VersionMismatchUpdatesToBinaryVersion(t *testing.T) {
   app_version: "9.9.9"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -119,8 +120,8 @@ func TestLoadConfig_VersionMismatchUpdatesToBinaryVersion(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		// AppVersion should be updated to the current binary version in memory
-		if cfg.ConfigSchema.AppVersion != "0.1.0" {
-			t.Errorf("expected AppVersion updated to '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+		if cfg.ConfigSchema.AppVersion != config.AppVersion {
+			t.Errorf("expected AppVersion updated to '%s', got '%s'", config.AppVersion, cfg.ConfigSchema.AppVersion)
 		}
 
 		// AppVersion should also be persisted to disk
@@ -128,9 +129,10 @@ func TestLoadConfig_VersionMismatchUpdatesToBinaryVersion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(dataAfter), "app_version: \"0.1.0\"") &&
-			!strings.Contains(string(dataAfter), "app_version: 0.1.0") {
-			t.Errorf("expected file on disk to contain updated app_version '0.1.0', got:\n%s", string(dataAfter))
+		expectedVer := config.AppVersion
+		if !strings.Contains(string(dataAfter), `app_version: "`+expectedVer+`"`) &&
+			!strings.Contains(string(dataAfter), "app_version: "+expectedVer) {
+			t.Errorf("expected file on disk to contain updated app_version '%s', got:\n%s", config.AppVersion, string(dataAfter))
 		}
 	})
 }
@@ -140,10 +142,10 @@ func TestLoadConfig_NotInitPreservesPaths(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: false
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -173,7 +175,7 @@ func TestLoadConfig_HealsMissingFields(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + homeDir + `"
   db_path: ""
@@ -218,10 +220,10 @@ func TestLoadConfig_UpdatesSchema(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   hist_limit_days: 7
@@ -247,10 +249,10 @@ func TestLoadConfig_RepoPathNotExist(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + filepath.Join(homeDir, "nonexistent-repo") + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -295,10 +297,10 @@ func TestLoadConfig_HealingDoesNotBreakValidConfig(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true

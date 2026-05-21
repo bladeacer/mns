@@ -2,6 +2,7 @@ package confighandler_test
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,10 +34,10 @@ func TestLoadConfig_NotInitDoesNotSaveToDisk(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: false
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -86,10 +87,10 @@ func TestLoadConfig_NotInitPreservesValuesOnDisk(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		originalContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: false
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -121,10 +122,10 @@ func TestLoadConfig_ValidInitDoesNotSaveToDisk(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -170,10 +171,10 @@ func TestLoadConfig_MultipleLoadsDontChangeFile(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -209,7 +210,7 @@ func TestLoadConfig_HealedFieldsPersistToDisk(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + homeDir + `"
   db_path: ""
@@ -259,10 +260,10 @@ func TestLoadConfig_IsInitFalseDoesNotRepairRepoPathOnDisk(t *testing.T) {
 
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: false
   repo_path: "` + customRepoPath + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -288,10 +289,10 @@ func TestLoadConfig_MissingKeysGetAddedBySchemaUpdate(t *testing.T) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -334,10 +335,10 @@ func TestHealAndSaveConfig_AlwaysSaves(t *testing.T) {
 		_ = os.MkdirAll(filepath.Dir(configPath), 0755)
 		initialContent := `config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -485,13 +486,12 @@ func TestLoadConfigWithPath_NoFileReturnsDefaults(t *testing.T) {
 func TestLoadConfig_VersionUpdatedPersistsToDisk(t *testing.T) {
 	withFakeHome(t, func(homeDir string) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
-		// Old version 0.4.0 in config, binary has 0.1.0
 		yamlContent := `config_schema:
   config_path: "` + configPath + `"
   app_version: "0.4.0"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -507,13 +507,14 @@ func TestLoadConfig_VersionUpdatedPersistsToDisk(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if cfg.ConfigSchema.AppVersion != "0.1.0" {
-				t.Errorf("expected in-memory version '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+			if cfg.ConfigSchema.AppVersion != config.AppVersion {
+				t.Errorf("expected in-memory version '%s', got '%s'", config.AppVersion, cfg.ConfigSchema.AppVersion)
 			}
 		})
 
-		if !strings.Contains(out, "AppVersion updated from '0.4.0' to '0.1.0'") {
-			t.Error("expected version update message")
+		expectedMsg := fmt.Sprintf("AppVersion updated from '0.4.0' to '%s'", config.AppVersion)
+		if !strings.Contains(out, expectedMsg) {
+			t.Errorf("expected version update message containing '%s', got: %s", expectedMsg, out)
 		}
 		if !strings.Contains(out, "Updating configuration file with current version") {
 			t.Error("expected file update message for version change")
@@ -523,7 +524,9 @@ func TestLoadConfig_VersionUpdatedPersistsToDisk(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(dataAfter), "app_version: 0.1.0") {
+		expectedVer := config.AppVersion
+		if !strings.Contains(string(dataAfter), `app_version: "`+expectedVer+`"`) &&
+			!strings.Contains(string(dataAfter), "app_version: "+expectedVer) {
 			t.Errorf("version not persisted to disk. File content:\n%s", string(dataAfter))
 		}
 	})
@@ -537,7 +540,7 @@ func TestLoadConfig_VersionUpdatedOnlyOnceAfterPersist(t *testing.T) {
   app_version: "0.4.0"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -583,7 +586,7 @@ func TestLoadConfig_VersionUpdatedEvenWhenNotInit(t *testing.T) {
   app_version: "0.4.0"
   is_init: false
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -599,13 +602,14 @@ func TestLoadConfig_VersionUpdatedEvenWhenNotInit(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if cfg.ConfigSchema.AppVersion != "0.1.0" {
-				t.Errorf("expected in-memory version '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+			if cfg.ConfigSchema.AppVersion != config.AppVersion {
+				t.Errorf("expected in-memory version '%s', got '%s'", config.AppVersion, cfg.ConfigSchema.AppVersion)
 			}
 		})
 
-		if !strings.Contains(out, "AppVersion updated from '0.4.0' to '0.1.0'") {
-			t.Error("expected version update message")
+		expectedMsg := fmt.Sprintf("AppVersion updated from '0.4.0' to '%s'", config.AppVersion)
+		if !strings.Contains(out, expectedMsg) {
+			t.Errorf("expected version update message containing '%s', got: %s", expectedMsg, out)
 		}
 		if !strings.Contains(out, "Updating configuration file with current version") {
 			t.Error("expected file update for version change even when IsInit=false")
@@ -646,8 +650,8 @@ func TestLoadConfig_HealingAndVersionUpdateOnlyOneSave(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if cfg.ConfigSchema.AppVersion != "0.1.0" {
-				t.Errorf("expected version '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+			if cfg.ConfigSchema.AppVersion != config.AppVersion {
+				t.Errorf("expected version '%s', got '%s'", config.AppVersion, cfg.ConfigSchema.AppVersion)
 			}
 		})
 
@@ -670,7 +674,7 @@ func TestLoadConfig_SchemaUpdateAndVersionUpdateOnlyOneSave(t *testing.T) {
   app_version: "0.4.0"
   is_init: true
   repo_path: "` + homeDir + `"
-  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  db_path: "` + fileio.ResolveDbPath() + `"
   archiver: tar
   commit_fmt: "mnemosync archive 2006-01-02"
   respect_gitignore: true
@@ -684,8 +688,8 @@ func TestLoadConfig_SchemaUpdateAndVersionUpdateOnlyOneSave(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if cfg.ConfigSchema.AppVersion != "0.1.0" {
-				t.Errorf("expected version '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+			if cfg.ConfigSchema.AppVersion != config.AppVersion {
+				t.Errorf("expected version '%s', got '%s'", config.AppVersion, cfg.ConfigSchema.AppVersion)
 			}
 		})
 

@@ -58,6 +58,7 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 		versionUpdated = true
 	}
 
+	oldDbPath := tempCfg.ConfigSchema.DbPath
 	healed, warnings := healConfigSchema(tempCfg, defaultCfg)
 
 	if healed && len(warnings) > 0 {
@@ -65,6 +66,11 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 		for _, w := range warnings {
 			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
 		}
+
+		if err := migrateDbFile(oldDbPath, tempCfg.ConfigSchema.DbPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", err)
+		}
+
 		fmt.Fprintf(os.Stderr, "Saving Repaired Configuration \n\n")
 
 		if saveErr := yamlwrapper.MergeAndSaveConfig(tempCfg, configPath, data); saveErr != nil {
@@ -118,6 +124,7 @@ func HealAndSaveConfig(configPath string) (*config.MnemoConf, error) {
 		fmt.Fprintf(os.Stderr, "Config Warning: AppVersion updated from '%s' to '%s'\n", old, defaultCfg.ConfigSchema.AppVersion)
 	}
 
+	oldDbPath := tempCfg.ConfigSchema.DbPath
 	healed, warnings := healConfigSchema(tempCfg, defaultCfg)
 
 	if healed && len(warnings) > 0 {
@@ -129,6 +136,10 @@ func HealAndSaveConfig(configPath string) (*config.MnemoConf, error) {
 		for _, w := range warnings {
 			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
 		}
+	}
+
+	if err := migrateDbFile(oldDbPath, tempCfg.ConfigSchema.DbPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Config Warning: %v\n", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "Saving configuration (--heal forced save)\n\n")
@@ -182,6 +193,8 @@ func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf)
 
 	if loadedSchema.DbPath == "" {
 		replaceField(&loadedSchema.DbPath, defaultSchema.DbPath, "DbPath", "Cannot be empty when initialized")
+	} else if loadedSchema.DbPath != defaultSchema.DbPath {
+		replaceField(&loadedSchema.DbPath, defaultSchema.DbPath, "DbPath", "Migrating to expected database path")
 	}
 
 	if loadedSchema.Archiver == "" {
@@ -214,4 +227,27 @@ func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf)
 	}
 
 	return healed, warnings
+}
+
+func migrateDbFile(oldPath, newPath string) error {
+	if oldPath == "" || oldPath == newPath {
+		return nil
+	}
+	if _, err := os.Stat(oldPath); os.IsNotExist(err) {
+		return nil
+	}
+	if _, err := os.Stat(newPath); err == nil {
+		if err := os.Remove(oldPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to remove stale database file '%s': %v\n", oldPath, err)
+		}
+		return nil
+	}
+	if err := fileio.CopyFile(oldPath, newPath); err != nil {
+		return fmt.Errorf("failed to migrate database file from '%s' to '%s': %w", oldPath, newPath, err)
+	}
+	if err := os.Remove(oldPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to remove old database file '%s': %v\n", oldPath, err)
+	}
+	fmt.Fprintf(os.Stderr, "Database file migrated from '%s' to '%s'\n", oldPath, newPath)
+	return nil
 }

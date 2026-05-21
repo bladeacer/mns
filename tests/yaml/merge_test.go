@@ -19,7 +19,7 @@ func TestMergeAndSaveConfig_PreservesExtraFields(t *testing.T) {
 extra_top_key: preserve_me
 config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + dir + `"
   db_path: "` + filepath.Join(dir, "state.json") + `"
@@ -39,7 +39,7 @@ config_schema:
 	cfg := &config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			ConfigPath:       configPath,
-			AppVersion:       "0.1.0",
+			AppVersion:       config.AppVersion,
 			IsInit:           true,
 			RepoPath:         dir,
 			DbPath:           filepath.Join(dir, "state.json"),
@@ -82,7 +82,7 @@ func TestSaveConfig_DropsExtraFields(t *testing.T) {
 	originalContent := `extra_top_key: will_be_lost
 config_schema:
   config_path: "` + configPath + `"
-  app_version: "0.1.0"
+  app_version: "` + config.AppVersion + `"
   is_init: true
   repo_path: "` + dir + `"
   db_path: "` + filepath.Join(dir, "state.json") + `"

@@ -17,7 +17,7 @@ func TestWriteYAML(t *testing.T) {
 	cfg := &config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			ConfigPath: configPath,
-			AppVersion: "0.1.0",
+			AppVersion: config.AppVersion,
 			IsInit:     true,
 			RepoPath:   dir,
 			DbPath:     filepath.Join(dir, "state.json"),
