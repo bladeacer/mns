@@ -57,9 +57,9 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 		fmt.Fprintf(os.Stderr, "Config Warning: AppVersion updated from '%s' to '%s'\n", old, defaultCfg.ConfigSchema.AppVersion)
 	}
 
-	warnings := healConfigSchema(tempCfg, defaultCfg)
+	healed, warnings := healConfigSchema(tempCfg, defaultCfg)
 
-	if len(warnings) > 0 {
+	if healed && len(warnings) > 0 {
 		fmt.Fprintf(os.Stderr, "Configuration Healing Performed \n")
 		for _, w := range warnings {
 			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
@@ -70,6 +70,10 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 			return nil, fmt.Errorf("critical error: failed to save repaired configuration: %w", saveErr)
 		}
 		return tempCfg, nil
+	}
+
+	for _, w := range warnings {
+		fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
 	}
 
 	if needsSchemaUpdate(data) {
@@ -105,10 +109,14 @@ func HealAndSaveConfig(configPath string) (*config.MnemoConf, error) {
 		fmt.Fprintf(os.Stderr, "Config Warning: AppVersion updated from '%s' to '%s'\n", old, defaultCfg.ConfigSchema.AppVersion)
 	}
 
-	warnings := healConfigSchema(tempCfg, defaultCfg)
+	healed, warnings := healConfigSchema(tempCfg, defaultCfg)
 
-	if len(warnings) > 0 {
+	if healed && len(warnings) > 0 {
 		fmt.Fprintf(os.Stderr, "Configuration Healing Performed\n")
+		for _, w := range warnings {
+			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
+		}
+	} else {
 		for _, w := range warnings {
 			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
 		}
@@ -139,21 +147,22 @@ func needsSchemaUpdate(data []byte) bool {
 	return false
 }
 
-func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf) []error {
+func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf) (bool, []error) {
 	warnings := make([]error, 0)
+	healed := false
 
 	loadedSchema := &loadedCfg.ConfigSchema
 	defaultSchema := defaultCfg.ConfigSchema
 
 	replaceField := func(field *string, defaultVal string, fieldName string, reason string) {
 		*field = defaultVal
+		healed = true
 		warnings = append(warnings, fmt.Errorf("invalid or empty field '%s': %s Overridden with default: '%s'", fieldName, reason, defaultVal))
 	}
 
 	if !loadedSchema.IsInit {
-		// Don't reset RepoPath/DbPath — just warn and skip field healing
 		warnings = append(warnings, fmt.Errorf("configuration is not initialized; run 'mns init' first"))
-		return warnings
+		return healed, warnings
 	}
 
 	if loadedSchema.RepoPath == "" {
@@ -174,22 +183,26 @@ func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf)
 	}
 	if loadedSchema.HistLimitDays < 0 {
 		loadedSchema.HistLimitDays = defaultSchema.HistLimitDays
+		healed = true
 		warnings = append(warnings, fmt.Errorf("invalid HistLimitDays: %d. Reset to default: %d", loadedSchema.HistLimitDays, defaultSchema.HistLimitDays))
 	}
 	if loadedSchema.HistLimitSizeMb < 0 {
 		loadedSchema.HistLimitSizeMb = defaultSchema.HistLimitSizeMb
+		healed = true
 		warnings = append(warnings, fmt.Errorf("invalid HistLimitSizeMb: %d. Reset to default: %d", loadedSchema.HistLimitSizeMb, defaultSchema.HistLimitSizeMb))
 	}
 
 	if loadedSchema.KeepArchives < 0 {
 		loadedSchema.KeepArchives = defaultSchema.KeepArchives
+		healed = true
 		warnings = append(warnings, fmt.Errorf("invalid KeepArchives: %d. Reset to default: %d", loadedSchema.KeepArchives, defaultSchema.KeepArchives))
 	}
 
 	if loadedSchema.LfsThresholdMb < 0 {
 		loadedSchema.LfsThresholdMb = defaultSchema.LfsThresholdMb
+		healed = true
 		warnings = append(warnings, fmt.Errorf("invalid LfsThresholdMb: %d. Reset to default: %d", loadedSchema.LfsThresholdMb, defaultSchema.LfsThresholdMb))
 	}
 
-	return warnings
+	return healed, warnings
 }
