@@ -31,16 +31,20 @@ gowatch: ## Start gowatch for hot-reload development
 snapshot: ## Test goreleaser locally (builds all platforms)
 	goreleaser release --snapshot --clean
 
-tag: ## Create (or push) an annotated git tag for a new release
+tag: ## Bump version in config, commit, create and push an annotated git tag
 	@CURRENT=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"); \
 	MAJOR=$$(echo "$$CURRENT" | sed 's/^v//' | cut -d. -f1); \
 	MINOR=$$(echo "$$CURRENT" | sed 's/^v//' | cut -d. -f2); \
 	SUGGEST="v$$MAJOR.$$(($$MINOR + 1)).0"; \
 	read -p "Enter version [$$SUGGEST]: " TAG; \
 	TAG=$${TAG:-$$SUGGEST}; \
+	VER=$$(echo "$$TAG" | sed 's/^v//'); \
 	if git rev-parse "$$TAG" >/dev/null 2>&1; then \
 		echo "Tag $$TAG already exists, pushing..."; \
 	else \
+		sed -i "s/var AppVersion = \".*\"/var AppVersion = \"$$VER\"/" config/config.go; \
+		git add config/config.go; \
+		git commit -m "chore: bump version to $$TAG"; \
 		git tag -a "$$TAG" -m "Release $$TAG" && echo "Created tag $$TAG."; \
 	fi; \
 	git push origin "$$TAG"

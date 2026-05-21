@@ -10,7 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var validateConfigPath string
+var (
+	validateConfigPath string
+	healConfig         bool
+)
 
 var validateCmd = &cobra.Command{
 	Use:   "validate",
@@ -21,6 +24,10 @@ any schema healing, and reports whether the files are valid.
 If --config is specified, the given file is loaded instead of the
 default config path. This is useful for testing that schema healing
 does not corrupt an existing configuration.
+
+If --heal is specified, schema healing is forced and the config is
+saved back to disk regardless of whether changes were needed. This
+is useful for testing how healing affects the configuration file.
 
 Exits with code 0 if both config and database are valid,
 1 if warnings were emitted, or 2 if errors occurred.`,
@@ -60,7 +67,14 @@ func validateConfig(configPath string) error {
 		return nil
 	}
 
-	cfg, err := confighandler.LoadConfigWithPath(configPath)
+	var cfg *config.MnemoConf
+	var err error
+
+	if healConfig {
+		cfg, err = confighandler.HealAndSaveConfig(configPath)
+	} else {
+		cfg, err = confighandler.LoadConfigWithPath(configPath)
+	}
 	if err != nil {
 		return fmt.Errorf("config validation failed: %w", err)
 	}
@@ -103,4 +117,5 @@ func validateDataStore() error {
 func init() {
 	RootCmd.AddCommand(validateCmd)
 	validateCmd.Flags().StringVarP(&validateConfigPath, "config", "c", "", "Path to a specific configuration file to validate")
+	validateCmd.Flags().BoolVarP(&healConfig, "heal", "", false, "Force schema healing and save (useful for testing)")
 }

@@ -1,0 +1,6 @@
+- [x] Fix configuration schema still nuking itself every time we gowatch/install
+  - AppVersion mismatch no longer triggers a disk write (in-memory only update in `LoadConfigWithPath`, `confighandler.go:53-58`)
+  - Config saves now use `MergeAndSaveConfig` which preserves unknown YAML fields via deep-merge (`yaml.go:49-74`)
+- [x] Have a `--heal` flag for healing the configuration schema so we can test how and why it nukes
+  - Added `--heal` flag to `mns validate` (`cmd/validate.go:120`)
+  - When set, calls `HealAndSaveConfig()` which forces a save after healing, allowing before/after file comparison

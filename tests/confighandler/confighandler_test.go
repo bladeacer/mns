@@ -94,7 +94,7 @@ func TestLoadConfig_InvalidYAML(t *testing.T) {
 	})
 }
 
-func TestLoadConfig_VersionMismatchPreservesStoredVersion(t *testing.T) {
+func TestLoadConfig_VersionMismatchUpdatesToBinaryVersion(t *testing.T) {
 	withFakeHome(t, func(homeDir string) {
 		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
 		yamlContent := `config_schema:
@@ -117,9 +117,9 @@ func TestLoadConfig_VersionMismatchPreservesStoredVersion(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		// AppVersion should be preserved from config, not overwritten
-		if cfg.ConfigSchema.AppVersion != "9.9.9" {
-			t.Errorf("expected AppVersion to remain '9.9.9', got '%s'", cfg.ConfigSchema.AppVersion)
+		// AppVersion should be updated to the current binary version
+		if cfg.ConfigSchema.AppVersion != "0.1.0" {
+			t.Errorf("expected AppVersion updated to '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
 		}
 	})
 }

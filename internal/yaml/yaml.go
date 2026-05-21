@@ -9,6 +9,25 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func deepMergeMaps(original, updated map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{}, len(original))
+	for k, v := range original {
+		result[k] = v
+	}
+	for k, v := range updated {
+		if origVal, ok := original[k]; ok {
+			if origMap, okOrig := origVal.(map[string]interface{}); okOrig {
+				if updMap, okUpd := v.(map[string]interface{}); okUpd {
+					result[k] = deepMergeMaps(origMap, updMap)
+					continue
+				}
+			}
+		}
+		result[k] = v
+	}
+	return result
+}
+
 func WriteYAML(defaultConfig *config.MnemoConf, configPath string) {
 	data, err := yaml.Marshal(defaultConfig)
 	if err != nil {
@@ -36,10 +55,28 @@ func SaveConfig(cfg *config.MnemoConf, targetPath string) error {
 	return nil
 }
 
-// func UnmarshalWrapper(data File, ) (error) {
-// 	if err := yaml.Unmarshal(data, cfg); err != nil {
-// 		fmt.Errorf("error unmarshalling YAML data. File may be invalid: %w", err)
-// 	}
+func MergeAndSaveConfig(cfg *config.MnemoConf, targetPath string, originalData []byte) error {
+	newData, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
 
-// 	return nil
-// }
+	var original map[string]interface{}
+	if err := yaml.Unmarshal(originalData, &original); err != nil {
+		return SaveConfig(cfg, targetPath)
+	}
+
+	var updated map[string]interface{}
+	if err := yaml.Unmarshal(newData, &updated); err != nil {
+		return SaveConfig(cfg, targetPath)
+	}
+
+	merged := deepMergeMaps(original, updated)
+
+	mergedData, err := yaml.Marshal(merged)
+	if err != nil {
+		return fmt.Errorf("failed to marshal merged config: %w", err)
+	}
+
+	return fileio.AtomicWriteFile(targetPath, mergedData, 0644)
+}

@@ -50,6 +50,13 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 		return nil, fmt.Errorf("error unmarshalling YAML data. File may be invalid: %w", err)
 	}
 
+	// Update AppVersion in-memory only — no disk write triggered
+	if tempCfg.ConfigSchema.AppVersion != defaultCfg.ConfigSchema.AppVersion {
+		old := tempCfg.ConfigSchema.AppVersion
+		tempCfg.ConfigSchema.AppVersion = defaultCfg.ConfigSchema.AppVersion
+		fmt.Fprintf(os.Stderr, "Config Warning: AppVersion updated from '%s' to '%s'\n", old, defaultCfg.ConfigSchema.AppVersion)
+	}
+
 	warnings := healConfigSchema(tempCfg, defaultCfg)
 
 	if len(warnings) > 0 {
@@ -59,7 +66,7 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 		}
 		fmt.Fprintf(os.Stderr, "Saving Repaired Configuration \n\n")
 
-		if saveErr := yamlwrapper.SaveConfig(tempCfg, configPath); saveErr != nil {
+		if saveErr := yamlwrapper.MergeAndSaveConfig(tempCfg, configPath, data); saveErr != nil {
 			return nil, fmt.Errorf("critical error: failed to save repaired configuration: %w", saveErr)
 		}
 		return tempCfg, nil
@@ -67,9 +74,49 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 
 	if needsSchemaUpdate(data) {
 		fmt.Fprintf(os.Stderr, "Updating configuration file with new schema fields\n")
-		if saveErr := yamlwrapper.SaveConfig(tempCfg, configPath); saveErr != nil {
+		if saveErr := yamlwrapper.MergeAndSaveConfig(tempCfg, configPath, data); saveErr != nil {
 			return nil, fmt.Errorf("critical error: failed to save updated configuration: %w", saveErr)
 		}
+	}
+
+	return tempCfg, nil
+}
+
+func HealAndSaveConfig(configPath string) (*config.MnemoConf, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading config file: %w", err)
+	}
+
+	if err := fileio.MigrateConfigData(configPath); err != nil {
+		return nil, fmt.Errorf("configuration migration failed: %w", err)
+	}
+	defaultCfg := config.GetMnemoConf()
+
+	tempCfg := config.GetMnemoConf()
+	if err := yaml.Unmarshal(data, tempCfg); err != nil {
+		return nil, fmt.Errorf("error unmarshalling YAML data: %w", err)
+	}
+
+	// Force AppVersion update
+	if tempCfg.ConfigSchema.AppVersion != defaultCfg.ConfigSchema.AppVersion {
+		old := tempCfg.ConfigSchema.AppVersion
+		tempCfg.ConfigSchema.AppVersion = defaultCfg.ConfigSchema.AppVersion
+		fmt.Fprintf(os.Stderr, "Config Warning: AppVersion updated from '%s' to '%s'\n", old, defaultCfg.ConfigSchema.AppVersion)
+	}
+
+	warnings := healConfigSchema(tempCfg, defaultCfg)
+
+	if len(warnings) > 0 {
+		fmt.Fprintf(os.Stderr, "Configuration Healing Performed\n")
+		for _, w := range warnings {
+			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
+		}
+	}
+
+	fmt.Fprintf(os.Stderr, "Saving configuration (--heal forced save)\n\n")
+	if err := yamlwrapper.MergeAndSaveConfig(tempCfg, configPath, data); err != nil {
+		return nil, fmt.Errorf("failed to save healed configuration: %w", err)
 	}
 
 	return tempCfg, nil
