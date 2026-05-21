@@ -70,10 +70,6 @@ func MigrateConfigData(newConfigPath string) error {
 			}
 		}
 
-		if err := os.RemoveAll(oldConfigDir); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to clean up old configuration directory %s: %v\n", oldConfigDir, err)
-		}
-
 		fmt.Fprintf(os.Stderr, "Configuration migration complete.\n")
 	}
 

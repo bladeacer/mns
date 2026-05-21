@@ -58,10 +58,6 @@ func migrateDbPath() error {
 		return fmt.Errorf("failed to copy database to new location: %w", err)
 	}
 
-	if err := os.Remove(oldPath); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to remove old database file %s: %v\n", oldPath, err)
-	}
-
 	fmt.Fprintf(os.Stderr, "Database migration complete.\n")
 	return nil
 }

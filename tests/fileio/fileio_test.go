@@ -142,20 +142,18 @@ func TestMigrateConfigData_WithMMSYNCConfNoOldFile(t *testing.T) {
 }
 
 func TestMigrateConfigData_MigrationSuccess(t *testing.T) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+	realHome := os.Getenv("HOME")
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Setenv("HOME", realHome) }()
 
-	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
+	oldConfigDir := filepath.Join(dir, ".config/mmsync")
 	_ = os.MkdirAll(oldConfigDir, 0755)
 	oldConfigFile := filepath.Join(oldConfigDir, "config.yaml")
 	oldDbFile := filepath.Join(oldConfigDir, "mmsync-state.json")
 
 	_ = os.WriteFile(oldConfigFile, []byte("old: config"), 0644)
 	_ = os.WriteFile(oldDbFile, []byte("{}"), 0644)
-
-	defer func() { _ = os.RemoveAll(oldConfigDir) }()
 
 	newDir := t.TempDir()
 	newConfigPath := filepath.Join(newDir, "config.yaml")
@@ -164,7 +162,7 @@ func TestMigrateConfigData_MigrationSuccess(t *testing.T) {
 	_ = os.Setenv("MMSYNC_CONF", newDir)
 	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
-	err = fileio.MigrateConfigData(newConfigPath)
+	err := fileio.MigrateConfigData(newConfigPath)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -179,16 +177,15 @@ func TestMigrateConfigData_MigrationSuccess(t *testing.T) {
 }
 
 func TestMigrateConfigData_TargetExists(t *testing.T) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+	realHome := os.Getenv("HOME")
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Setenv("HOME", realHome) }()
 
-	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
+	oldConfigDir := filepath.Join(dir, ".config/mmsync")
 	_ = os.MkdirAll(oldConfigDir, 0755)
 	oldConfigFile := filepath.Join(oldConfigDir, "config.yaml")
 	_ = os.WriteFile(oldConfigFile, []byte("old: config"), 0644)
-	defer func() { _ = os.RemoveAll(oldConfigDir) }()
 
 	newDir := t.TempDir()
 	newConfigPath := filepath.Join(newDir, "config.yaml")
@@ -198,23 +195,22 @@ func TestMigrateConfigData_TargetExists(t *testing.T) {
 	_ = os.Setenv("MMSYNC_CONF", newDir)
 	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
-	err = fileio.MigrateConfigData(newConfigPath)
+	err := fileio.MigrateConfigData(newConfigPath)
 	if err == nil {
 		t.Error("expected error when target already exists")
 	}
 }
 
 func TestMigrateConfigData_CopyConfigError(t *testing.T) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+	realHome := os.Getenv("HOME")
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Setenv("HOME", realHome) }()
 
-	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
+	oldConfigDir := filepath.Join(dir, ".config/mmsync")
 	_ = os.MkdirAll(oldConfigDir, 0755)
 	oldConfigFile := filepath.Join(oldConfigDir, "config.yaml")
 	_ = os.WriteFile(oldConfigFile, []byte("old: config"), 0644)
-	defer func() { _ = os.RemoveAll(oldConfigDir) }()
 
 	newDir := t.TempDir()
 	newConfigPath := filepath.Join(newDir, "nested", "config.yaml")
@@ -228,21 +224,20 @@ func TestMigrateConfigData_CopyConfigError(t *testing.T) {
 	_ = os.Setenv("MMSYNC_CONF", newDir)
 	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
-	err = fileio.MigrateConfigData(newConfigPath)
+	err := fileio.MigrateConfigData(newConfigPath)
 	if err == nil {
 		t.Error("expected error when dest dir is not writable")
 	}
 }
 
 func TestMigrateConfigData_OldDirSameAsNew(t *testing.T) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+	realHome := os.Getenv("HOME")
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Setenv("HOME", realHome) }()
 
-	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
+	oldConfigDir := filepath.Join(dir, ".config/mmsync")
 	_ = os.MkdirAll(oldConfigDir, 0755)
-	defer func() { _ = os.RemoveAll(oldConfigDir) }()
 
 	newConfigPath := filepath.Join(oldConfigDir, "config.yaml")
 
@@ -250,7 +245,7 @@ func TestMigrateConfigData_OldDirSameAsNew(t *testing.T) {
 	_ = os.Setenv("MMSYNC_CONF", oldConfigDir)
 	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
 
-	err = fileio.MigrateConfigData(newConfigPath)
+	err := fileio.MigrateConfigData(newConfigPath)
 	if err != nil {
 		t.Fatalf("expected no error when old=new dirs, got: %v", err)
 	}

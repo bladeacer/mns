@@ -12,22 +12,14 @@ func writeConfigDir(t *testing.T) (dir string, cleanup func()) {
 	t.Helper()
 	dir = t.TempDir()
 
+	prevHome := os.Getenv("HOME")
 	prevMMSync := os.Getenv("MMSYNC_CONF")
+	_ = os.Setenv("HOME", dir)
 	_ = os.Setenv("MMSYNC_CONF", dir)
 
-	backupDir := filepath.Join(dir, ".backup-mmsync")
-	homeDir, _ := os.UserHomeDir()
-	oldConfigDir := filepath.Join(homeDir, ".config/mmsync")
-	if _, err := os.Stat(oldConfigDir); err == nil {
-		_ = os.Rename(oldConfigDir, backupDir)
-	}
-
 	cleanup = func() {
+		_ = os.Setenv("HOME", prevHome)
 		_ = os.Setenv("MMSYNC_CONF", prevMMSync)
-		if _, err := os.Stat(backupDir); err == nil {
-			_ = os.RemoveAll(oldConfigDir)
-			_ = os.Rename(backupDir, oldConfigDir)
-		}
 	}
 	return
 }
@@ -210,6 +202,9 @@ func TestDataStore_SaveData_MkdirAllError(t *testing.T) {
 }
 
 func TestLoadDataStore_NoFile(t *testing.T) {
+	_, cleanup := writeConfigDir(t)
+	defer cleanup()
+
 	ds, err := config.LoadDataStore()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

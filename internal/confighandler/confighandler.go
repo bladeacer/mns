@@ -237,16 +237,10 @@ func migrateDbFile(oldPath, newPath string) error {
 		return nil
 	}
 	if _, err := os.Stat(newPath); err == nil {
-		if err := os.Remove(oldPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to remove stale database file '%s': %v\n", oldPath, err)
-		}
 		return nil
 	}
 	if err := fileio.CopyFile(oldPath, newPath); err != nil {
 		return fmt.Errorf("failed to migrate database file from '%s' to '%s': %w", oldPath, newPath, err)
-	}
-	if err := os.Remove(oldPath); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to remove old database file '%s': %v\n", oldPath, err)
 	}
 	fmt.Fprintf(os.Stderr, "Database file migrated from '%s' to '%s'\n", oldPath, newPath)
 	return nil

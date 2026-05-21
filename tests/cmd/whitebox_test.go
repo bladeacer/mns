@@ -14,13 +14,29 @@ import (
 	"github.com/bladeacer/mns/config"
 )
 
+var savedHome string
+var savedHomeValid bool
+
 func resetGlobals() {
 	cmd.SetAppConf(nil)
 	cmd.SetDataStore(nil)
+	if savedHomeValid {
+		if savedHome != "" {
+			_ = os.Setenv("HOME", savedHome)
+		} else {
+			_ = os.Unsetenv("HOME")
+		}
+		savedHomeValid = false
+	}
+	_ = os.Unsetenv("MMSYNC_CONF")
 }
 
 func setTestGlobals(dir string) {
 	resetGlobals()
+	savedHome = os.Getenv("HOME")
+	savedHomeValid = true
+	_ = os.Setenv("HOME", dir)
+	_ = os.Setenv("MMSYNC_CONF", dir)
 	cmd.SetAppConf(&config.MnemoConf{
 		ConfigSchema: config.ConfigSchema{
 			ConfigPath:      filepath.Join(dir, "config.yaml"),
@@ -155,31 +171,30 @@ func TestProcessRepoPath_Absolute(t *testing.T) {
 }
 
 func TestProcessRepoPath_Tilde(t *testing.T) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+	origHome := os.Getenv("HOME")
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Setenv("HOME", origHome) }()
 
 	result, err := cmd.ProcessRepoPath("~")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result != homeDir {
-		t.Errorf("expected '%s', got '%s'", homeDir, result)
+	if result != dir {
+		t.Errorf("expected '%s', got '%s'", dir, result)
 	}
 }
 
 func TestProcessRepoPath_TildePath(t *testing.T) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+	origHome := os.Getenv("HOME")
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Setenv("HOME", origHome) }()
 
-	subdir := filepath.Join(homeDir, "test-subdir-process")
+	subdir := filepath.Join(dir, "test-subdir-process")
 	if err := os.Mkdir(subdir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = os.RemoveAll(subdir) }()
 
 	result, err := cmd.ProcessRepoPath("~/test-subdir-process")
 	if err != nil {
@@ -273,20 +288,26 @@ func TestResolveAndValidatePath_Absolute(t *testing.T) {
 }
 
 func TestResolveAndValidatePath_Tilde(t *testing.T) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
+	dir := t.TempDir()
+	configDir := filepath.Join(dir, ".config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	dir := t.TempDir()
+	subdir := filepath.Join(dir, "subdir")
+	if err := os.Mkdir(subdir, 0755); err != nil {
+		t.Fatal(err)
+	}
 	setTestGlobals(dir)
+	cmd.GetAppConf().ConfigSchema.ConfigPath = filepath.Join(configDir, "config.yaml")
+	cmd.GetAppConf().ConfigSchema.RepoPath = "/some/other/repo"
 	defer resetGlobals()
 
-	result, err := cmd.ResolveAndValidatePath("~/")
+	result, err := cmd.ResolveAndValidatePath("~/subdir")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result != homeDir {
-		t.Errorf("expected '%s', got '%s'", homeDir, result)
+	if result != subdir {
+		t.Errorf("expected '%s', got '%s'", subdir, result)
 	}
 }
 
@@ -857,12 +878,16 @@ func TestSaveConfig(t *testing.T) {
 	dir := t.TempDir()
 
 	prevMMSync := os.Getenv("MMSYNC_CONF")
+	prevHome := os.Getenv("HOME")
+
 	_ = os.Setenv("MMSYNC_CONF", dir)
+	_ = os.Setenv("HOME", dir)
 
 	setTestGlobals(dir)
 	defer func() {
 		resetGlobals()
 		_ = os.Setenv("MMSYNC_CONF", prevMMSync)
+		_ = os.Setenv("HOME", prevHome)
 	}()
 
 	cmd.GetAppConf().ConfigSchema.ConfigPath = filepath.Join(dir, "config.yaml")
@@ -1321,15 +1346,21 @@ func TestDisplayManPage_PagerFallback(t *testing.T) {
 
 func TestSaveConfig_WithHOME(t *testing.T) {
 	dir := t.TempDir()
-	realHome := os.Getenv("HOME")
-	_ = os.Setenv("HOME", dir)
-	defer func() { _ = os.Setenv("HOME", realHome) }()
+	origHome := os.Getenv("HOME")
+	origMMSync := os.Getenv("MMSYNC_CONF")
 
-	prevMMSync := os.Getenv("MMSYNC_CONF")
-	_ = os.Unsetenv("MMSYNC_CONF")
-	defer func() { _ = os.Setenv("MMSYNC_CONF", prevMMSync) }()
+	_ = os.Setenv("HOME", dir)
+	_ = os.Setenv("MMSYNC_CONF", dir)
 
 	setTestGlobals(dir)
+
+	_ = os.Unsetenv("MMSYNC_CONF")
+	defer func() {
+		resetGlobals()
+		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("MMSYNC_CONF", origMMSync)
+	}()
+
 	cmd.GetAppConf().ConfigSchema.ConfigPath = filepath.Join(dir, ".config/mmsync/config.yaml")
 
 	_ = os.MkdirAll(filepath.Join(dir, ".config/mmsync"), 0755)
@@ -1343,8 +1374,6 @@ func TestSaveConfig_WithHOME(t *testing.T) {
 	if !strings.Contains(string(data), "config_schema") {
 		t.Error("expected saved config to contain config_schema")
 	}
-
-	resetGlobals()
 }
 
 func TestProcessRepoPath_TildeHomeDirErr(t *testing.T) {
@@ -1536,6 +1565,19 @@ func TestPruneOldArchives_ZipArchiver(t *testing.T) {
 	cmd.PruneOldArchives("zip")
 }
 
+func validateConfigWithEnv(t *testing.T, dir string, configPath string) int {
+	t.Helper()
+	prevHome := os.Getenv("HOME")
+	prevMMSync := os.Getenv("MMSYNC_CONF")
+	_ = os.Setenv("HOME", dir)
+	_ = os.Setenv("MMSYNC_CONF", dir)
+	defer func() {
+		_ = os.Setenv("HOME", prevHome)
+		_ = os.Setenv("MMSYNC_CONF", prevMMSync)
+	}()
+	return cmd.ValidateConfigAndDataStore(configPath)
+}
+
 func TestValidateConfig_ValidFile(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.yaml")
@@ -1561,7 +1603,7 @@ func TestValidateConfig_ValidFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	code := cmd.ValidateConfigAndDataStore(configPath)
+	code := validateConfigWithEnv(t, dir, configPath)
 	if code != 0 {
 		t.Errorf("expected exit code 0, got %d", code)
 	}
@@ -1592,7 +1634,7 @@ func TestValidateConfig_NotInit(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	code := cmd.ValidateConfigAndDataStore(configPath)
+	code := validateConfigWithEnv(t, dir, configPath)
 	if code != 0 {
 		t.Errorf("expected exit code 0 for uninitialized config (valid but not init), got %d", code)
 	}
@@ -1602,7 +1644,7 @@ func TestValidateConfig_MissingFile(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "nonexistent.yaml")
 
-	code := cmd.ValidateConfigAndDataStore(configPath)
+	code := validateConfigWithEnv(t, dir, configPath)
 	if code != 0 {
 		t.Errorf("expected exit code 0 for missing config file, got %d", code)
 	}

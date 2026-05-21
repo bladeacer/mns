@@ -15,7 +15,7 @@ build: ## Build the mns binary
 	go build -ldflags="$(LDFLAGS)" -o $(BINARY) .
 
 test: ## Run all tests with coverage and badge
-	go test -coverpkg=./... -coverprofile=coverage.out ./... -count=1
+	go test -coverpkg=./... -coverprofile=coverage.out ./tests/... -count=1
 	@go tool cover -func=coverage.out
 	@go-test-coverage -p coverage.out -b coverage.svg 2>/dev/null || true
 
