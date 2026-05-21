@@ -190,7 +190,19 @@ Requires confirmation.`,
 
 func SaveConfig() {
 	configPath := fileio.ResolveConfigPath()
-	if err := yamlwrapper.SaveConfig(AppConf, configPath); err != nil {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err := yamlwrapper.SaveConfig(AppConf, configPath); err != nil {
+				fmt.Fprintf(os.Stderr, "Error saving configuration: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+		fmt.Fprintf(os.Stderr, "Error reading configuration: %v\n", err)
+		os.Exit(1)
+	}
+	if err := yamlwrapper.MergeAndSaveConfig(AppConf, configPath, data); err != nil {
 		fmt.Fprintf(os.Stderr, "Error saving configuration: %v\n", err)
 		os.Exit(1)
 	}

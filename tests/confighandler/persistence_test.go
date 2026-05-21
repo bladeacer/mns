@@ -481,3 +481,219 @@ func TestLoadConfigWithPath_NoFileReturnsDefaults(t *testing.T) {
 		}
 	})
 }
+
+func TestLoadConfig_VersionUpdatedPersistsToDisk(t *testing.T) {
+	withFakeHome(t, func(homeDir string) {
+		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
+		// Old version 0.4.0 in config, binary has 0.1.0
+		yamlContent := `config_schema:
+  config_path: "` + configPath + `"
+  app_version: "0.4.0"
+  is_init: true
+  repo_path: "` + homeDir + `"
+  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  archiver: tar
+  commit_fmt: "mnemosync archive 2006-01-02"
+  respect_gitignore: true
+  hist_limit_days: 7
+  hist_limit_size_mb: 1024
+  keep_archives: 5
+  lfs_threshold_mb: 5
+`
+		writeConfig(t, homeDir, yamlContent)
+
+		out := captureStderr(t, func() {
+			cfg, err := confighandler.LoadConfig()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if cfg.ConfigSchema.AppVersion != "0.1.0" {
+				t.Errorf("expected in-memory version '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+			}
+		})
+
+		if !strings.Contains(out, "AppVersion updated from '0.4.0' to '0.1.0'") {
+			t.Error("expected version update message")
+		}
+		if !strings.Contains(out, "Updating configuration file with current version") {
+			t.Error("expected file update message for version change")
+		}
+
+		dataAfter, err := os.ReadFile(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(dataAfter), "app_version: 0.1.0") {
+			t.Errorf("version not persisted to disk. File content:\n%s", string(dataAfter))
+		}
+	})
+}
+
+func TestLoadConfig_VersionUpdatedOnlyOnceAfterPersist(t *testing.T) {
+	withFakeHome(t, func(homeDir string) {
+		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
+		yamlContent := `config_schema:
+  config_path: "` + configPath + `"
+  app_version: "0.4.0"
+  is_init: true
+  repo_path: "` + homeDir + `"
+  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  archiver: tar
+  commit_fmt: "mnemosync archive 2006-01-02"
+  respect_gitignore: true
+  hist_limit_days: 7
+  hist_limit_size_mb: 1024
+  keep_archives: 5
+  lfs_threshold_mb: 5
+`
+		writeConfig(t, homeDir, yamlContent)
+
+		// First load updates and persists version
+		out1 := captureStderr(t, func() {
+			_, err := confighandler.LoadConfig()
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+		if !strings.Contains(out1, "Updating configuration file with current version") {
+			t.Error("first load should update version on disk")
+		}
+
+		// Second load should see matching version and NOT trigger another save
+		out2 := captureStderr(t, func() {
+			_, err := confighandler.LoadConfig()
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+		if strings.Contains(out2, "Updating configuration file with current version") {
+			t.Error("second load should NOT update version - it was already persisted")
+		}
+		if strings.Contains(out2, "AppVersion updated") {
+			t.Error("second load should NOT show version mismatch warning")
+		}
+	})
+}
+
+func TestLoadConfig_VersionUpdatedEvenWhenNotInit(t *testing.T) {
+	withFakeHome(t, func(homeDir string) {
+		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
+		yamlContent := `config_schema:
+  config_path: "` + configPath + `"
+  app_version: "0.4.0"
+  is_init: false
+  repo_path: "` + homeDir + `"
+  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  archiver: tar
+  commit_fmt: "mnemosync archive 2006-01-02"
+  respect_gitignore: true
+  hist_limit_days: 7
+  hist_limit_size_mb: 1024
+  keep_archives: 5
+  lfs_threshold_mb: 5
+`
+		writeConfig(t, homeDir, yamlContent)
+
+		out := captureStderr(t, func() {
+			cfg, err := confighandler.LoadConfig()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if cfg.ConfigSchema.AppVersion != "0.1.0" {
+				t.Errorf("expected in-memory version '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+			}
+		})
+
+		if !strings.Contains(out, "AppVersion updated from '0.4.0' to '0.1.0'") {
+			t.Error("expected version update message")
+		}
+		if !strings.Contains(out, "Updating configuration file with current version") {
+			t.Error("expected file update for version change even when IsInit=false")
+		}
+
+		dataAfter, err := os.ReadFile(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(dataAfter), "app_version: \"0.4.0\"") {
+			t.Error("version was NOT updated on disk for IsInit=false config")
+		}
+	})
+}
+
+func TestLoadConfig_HealingAndVersionUpdateOnlyOneSave(t *testing.T) {
+	withFakeHome(t, func(homeDir string) {
+		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
+		// Config with old version AND empty fields that need healing
+		yamlContent := `config_schema:
+  config_path: "` + configPath + `"
+  app_version: "0.4.0"
+  is_init: true
+  repo_path: "` + homeDir + `"
+  db_path: ""
+  archiver: ""
+  commit_fmt: "mnemosync archive 2006-01-02"
+  respect_gitignore: true
+  hist_limit_days: 7
+  hist_limit_size_mb: 1024
+  keep_archives: 5
+  lfs_threshold_mb: 5
+`
+		writeConfig(t, homeDir, yamlContent)
+
+		out := captureStderr(t, func() {
+			cfg, err := confighandler.LoadConfig()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if cfg.ConfigSchema.AppVersion != "0.1.0" {
+				t.Errorf("expected version '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+			}
+		})
+
+		if !strings.Contains(out, "Saving Repaired Configuration") {
+			t.Error("expected healing save")
+		}
+		// Should NOT also have a version update save - healing save already covers it
+		if strings.Contains(out, "Updating configuration file with current version") {
+			t.Error("should not have separate version update save when healing already saved")
+		}
+	})
+}
+
+func TestLoadConfig_SchemaUpdateAndVersionUpdateOnlyOneSave(t *testing.T) {
+	withFakeHome(t, func(homeDir string) {
+		configPath := filepath.Join(homeDir, ".config/mmsync/config.yaml")
+		// Config with old version AND missing schema fields
+		yamlContent := `config_schema:
+  config_path: "` + configPath + `"
+  app_version: "0.4.0"
+  is_init: true
+  repo_path: "` + homeDir + `"
+  db_path: "` + filepath.Join(homeDir, ".config/mmsync/mmsync-state.json") + `"
+  archiver: tar
+  commit_fmt: "mnemosync archive 2006-01-02"
+  respect_gitignore: true
+  hist_limit_days: 7
+  hist_limit_size_mb: 1024
+`
+		writeConfig(t, homeDir, yamlContent)
+
+		out := captureStderr(t, func() {
+			cfg, err := confighandler.LoadConfig()
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if cfg.ConfigSchema.AppVersion != "0.1.0" {
+				t.Errorf("expected version '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+			}
+		})
+
+		if !strings.Contains(out, "Updating configuration file with new schema fields") {
+			t.Error("expected schema update save")
+		}
+		if strings.Contains(out, "Updating configuration file with current version") {
+			t.Error("should not have separate version update save when schema update already saved")
+		}
+	})
+}

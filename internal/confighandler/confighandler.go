@@ -50,11 +50,12 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 		return nil, fmt.Errorf("error unmarshalling YAML data. File may be invalid: %w", err)
 	}
 
-	// Update AppVersion in-memory only — no disk write triggered
+	versionUpdated := false
 	if tempCfg.ConfigSchema.AppVersion != defaultCfg.ConfigSchema.AppVersion {
 		old := tempCfg.ConfigSchema.AppVersion
 		tempCfg.ConfigSchema.AppVersion = defaultCfg.ConfigSchema.AppVersion
 		fmt.Fprintf(os.Stderr, "Config Warning: AppVersion updated from '%s' to '%s'\n", old, defaultCfg.ConfigSchema.AppVersion)
+		versionUpdated = true
 	}
 
 	healed, warnings := healConfigSchema(tempCfg, defaultCfg)
@@ -78,6 +79,14 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 
 	if needsSchemaUpdate(data) {
 		fmt.Fprintf(os.Stderr, "Updating configuration file with new schema fields\n")
+		if saveErr := yamlwrapper.MergeAndSaveConfig(tempCfg, configPath, data); saveErr != nil {
+			return nil, fmt.Errorf("critical error: failed to save updated configuration: %w", saveErr)
+		}
+		return tempCfg, nil
+	}
+
+	if versionUpdated {
+		fmt.Fprintf(os.Stderr, "Updating configuration file with current version\n\n")
 		if saveErr := yamlwrapper.MergeAndSaveConfig(tempCfg, configPath, data); saveErr != nil {
 			return nil, fmt.Errorf("critical error: failed to save updated configuration: %w", saveErr)
 		}

@@ -3,6 +3,7 @@ package confighandler_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bladeacer/mns/config"
@@ -117,9 +118,19 @@ func TestLoadConfig_VersionMismatchUpdatesToBinaryVersion(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		// AppVersion should be updated to the current binary version
+		// AppVersion should be updated to the current binary version in memory
 		if cfg.ConfigSchema.AppVersion != "0.1.0" {
 			t.Errorf("expected AppVersion updated to '0.1.0', got '%s'", cfg.ConfigSchema.AppVersion)
+		}
+
+		// AppVersion should also be persisted to disk
+		dataAfter, err := os.ReadFile(configPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(dataAfter), "app_version: \"0.1.0\"") &&
+			!strings.Contains(string(dataAfter), "app_version: 0.1.0") {
+			t.Errorf("expected file on disk to contain updated app_version '0.1.0', got:\n%s", string(dataAfter))
 		}
 	})
 }
