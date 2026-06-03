@@ -250,3 +250,98 @@ func TestMigrateConfigData_OldDirSameAsNew(t *testing.T) {
 		t.Fatalf("expected no error when old=new dirs, got: %v", err)
 	}
 }
+
+func TestConfigDir_Default(t *testing.T) {
+	prevConf := os.Getenv("MMSYNC_CONF")
+	_ = os.Unsetenv("MMSYNC_CONF")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
+
+	dir := fileio.ConfigDir()
+	if dir == "" {
+		t.Fatal("expected non-empty config dir")
+	}
+	if !strings.HasSuffix(dir, "mmsync") {
+		t.Errorf("expected config dir to end with 'mmsync', got '%s'", dir)
+	}
+}
+
+func TestConfigDir_WithMMSYNCConf(t *testing.T) {
+	prevConf := os.Getenv("MMSYNC_CONF")
+	_ = os.Setenv("MMSYNC_CONF", "/custom/path")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
+
+	dir := fileio.ConfigDir()
+	if dir != "/custom/path" {
+		t.Errorf("expected '/custom/path', got '%s'", dir)
+	}
+}
+
+func TestDbDir_Default(t *testing.T) {
+	prevConf := os.Getenv("MMSYNC_CONF")
+	_ = os.Unsetenv("MMSYNC_CONF")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
+
+	dir := fileio.DbDir()
+	if dir == "" {
+		t.Fatal("expected non-empty db dir")
+	}
+}
+
+func TestDbDir_WithMMSYNCConf(t *testing.T) {
+	prevConf := os.Getenv("MMSYNC_CONF")
+	_ = os.Setenv("MMSYNC_CONF", "/custom/path")
+	defer func() { _ = os.Setenv("MMSYNC_CONF", prevConf) }()
+
+	dir := fileio.DbDir()
+	if dir != "/custom/path" {
+		t.Errorf("expected '/custom/path', got '%s'", dir)
+	}
+}
+
+func TestLegacyDbPath(t *testing.T) {
+	realHome := os.Getenv("HOME")
+	dir := t.TempDir()
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Setenv("HOME", realHome) }()
+
+	path := fileio.LegacyDbPath()
+	expected := filepath.Join(dir, ".config/mmsync", "mmsync-state.json")
+	if path != expected {
+		t.Errorf("expected '%s', got '%s'", expected, path)
+	}
+}
+
+func TestLegacyConfigDirPath(t *testing.T) {
+	realHome := os.Getenv("HOME")
+	dir := t.TempDir()
+	_ = os.Setenv("HOME", dir)
+	defer func() { _ = os.Setenv("HOME", realHome) }()
+
+	path := fileio.LegacyConfigDirPath()
+	expected := filepath.Join(dir, ".config/mmsync")
+	if path != expected {
+		t.Errorf("expected '%s', got '%s'", expected, path)
+	}
+}
+
+func TestLegacyDbPath_HomeUnset(t *testing.T) {
+	realHome := os.Getenv("HOME")
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", realHome) }()
+
+	path := fileio.LegacyDbPath()
+	if path == "" {
+		t.Error("expected fallback path when HOME is unset")
+	}
+}
+
+func TestLegacyConfigDirPath_HomeUnset(t *testing.T) {
+	realHome := os.Getenv("HOME")
+	_ = os.Unsetenv("HOME")
+	defer func() { _ = os.Setenv("HOME", realHome) }()
+
+	path := fileio.LegacyConfigDirPath()
+	if path == "" {
+		t.Error("expected fallback path when HOME is unset")
+	}
+}

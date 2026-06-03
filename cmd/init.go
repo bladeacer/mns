@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Global variable to hold the path passed via flag
 var repoPathFlag string
 
 var initCmd = &cobra.Command{
@@ -24,31 +23,14 @@ var initCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		configPath := fileio.ResolveConfigPath()
 		dbPath := fileio.ResolveDbPath()
-		_, confErr := os.Stat(configPath)
-		_, dbErr := os.Stat(dbPath)
 
-		if confErr == nil {
-			fmt.Fprintf(os.Stderr, "Error: Cannot run init. Configuration file already exists at %s\n", configPath)
-			fmt.Fprintf(os.Stderr, "Please remove the existing configuration file before running 'init'.\n")
+		dbExists, err := ValidateInitPreconditions(configPath, dbPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
-		} else if !os.IsNotExist(confErr) {
-			fmt.Fprintf(os.Stderr, "Error checking for config file at %s: %v\n", configPath, confErr)
 		}
 
-		dbExists := dbErr == nil
-		if dbErr != nil && !os.IsNotExist(dbErr) {
-			fmt.Fprintf(os.Stderr, "Error checking for database file at %s: %v\n", dbPath, dbErr)
-		}
-
-		var finalRepoPath string
-		var err error
-
-		if repoPathFlag != "" {
-			finalRepoPath, err = ProcessRepoPath(repoPathFlag)
-		} else {
-			finalRepoPath, err = getRepoPathInteractive()
-		}
-
+		finalRepoPath, err := resolveInitRepoPath()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "\nInitialization aborted: %v\n", err)
 			os.Exit(1)
@@ -59,32 +41,59 @@ var initCmd = &cobra.Command{
 		defaultConfig.ConfigSchema.RepoPath = finalRepoPath
 		defaultConfig.ConfigSchema.DbPath = dbPath
 
-		exists, _ := healthcheck.GitDirExists(finalRepoPath)
-
-		if exists {
-			fmt.Printf("\nRepository path validated: '%s/.git' exists.\n", finalRepoPath)
-			yaml.WriteYAML(defaultConfig, configPath)
-			if dbExists {
-				fmt.Printf("Database file already exists at: '%s'. Leaving as-is.\n", dbPath)
-			} else {
-				_ = config.GetDataStore().SaveData(dbPath)
-				fmt.Printf("\nDatabase created at: '%s'.\n", dbPath)
-			}
-
-			repoPath := finalRepoPath
-			if err := EnsureGitignoreInDir(repoPath); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not ensure .mnemosync is gitignored: %v\n", err)
-			}
-		} else {
-			fmt.Printf("\nDirectory '%s/.git' does not exist.\n", finalRepoPath)
-			fmt.Printf("Aborting configuration write.\n")
-		}
+		CompleteInitSetup(finalRepoPath, configPath, dbPath, dbExists, defaultConfig)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(initCmd)
 	initCmd.Flags().StringVarP(&repoPathFlag, "repo-path", "r", "", "Specify the path to the target Git repository.")
+}
+
+func ValidateInitPreconditions(configPath, dbPath string) (dbExists bool, err error) {
+	_, confErr := os.Stat(configPath)
+	_, dbErr := os.Stat(dbPath)
+
+	if confErr == nil {
+		return false, fmt.Errorf("Cannot run init. Configuration file already exists at %s\nPlease remove the existing configuration file before running 'init'.", configPath)
+	} else if !os.IsNotExist(confErr) {
+		fmt.Fprintf(os.Stderr, "Error checking for config file at %s: %v\n", configPath, confErr)
+	}
+
+	if dbErr != nil && !os.IsNotExist(dbErr) {
+		fmt.Fprintf(os.Stderr, "Error checking for database file at %s: %v\n", dbPath, dbErr)
+	}
+
+	return dbErr == nil, nil
+}
+
+func resolveInitRepoPath() (string, error) {
+	if repoPathFlag != "" {
+		return ProcessRepoPath(repoPathFlag)
+	}
+	return getRepoPathInteractive()
+}
+
+func CompleteInitSetup(repoPath, configPath, dbPath string, dbExists bool, cfg *config.MnemoConf) {
+	exists, _ := healthcheck.GitDirExists(repoPath)
+
+	if exists {
+		fmt.Printf("\nRepository path validated: '%s/.git' exists.\n", repoPath)
+		yaml.WriteYAML(cfg, configPath)
+		if dbExists {
+			fmt.Printf("Database file already exists at: '%s'. Leaving as-is.\n", dbPath)
+		} else {
+			_ = config.GetDataStore().SaveData(dbPath)
+			fmt.Printf("\nDatabase created at: '%s'.\n", dbPath)
+		}
+
+		if err := EnsureGitignoreInDir(repoPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: could not ensure .mnemosync is gitignored: %v\n", err)
+		}
+	} else {
+		fmt.Printf("\nDirectory '%s/.git' does not exist.\n", repoPath)
+		fmt.Printf("Aborting configuration write.\n")
+	}
 }
 
 func PathCompleter(line string) []string {

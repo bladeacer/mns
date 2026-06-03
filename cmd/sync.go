@@ -45,40 +45,7 @@ Examples:
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-
-		dirs := SelectDirs(args)
-
-		if len(dirs) == 0 {
-			fmt.Println("No directories to stage.")
-			return
-		}
-
-		staging := StagingDir()
-		if err := os.MkdirAll(staging, 0755); err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating staging directory %s: %v\n", staging, err)
-			os.Exit(1)
-		}
-
-		for _, entry := range dirs {
-			dest := filepath.Join(staging, entry.Alias)
-			fmt.Printf("Staging '%s' (%s) -> %s\n", entry.Alias, entry.TargetPath, dest)
-
-			rsyncArgs := []string{"-a", "--delete"}
-			if !AppConf.ConfigSchema.RespectGitignore {
-				rsyncArgs = append(rsyncArgs, "--exclude=.gitignore")
-			}
-			rsyncArgs = append(rsyncArgs, entry.TargetPath+"/", dest)
-
-			cmd := exec.Command("rsync", rsyncArgs...)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error rsyncing '%s': %v\n", entry.Alias, err)
-				os.Exit(1)
-			}
-		}
-
-		fmt.Println("Staging complete.")
+		runStage(args, "-a")
 	},
 }
 
@@ -96,47 +63,13 @@ Examples:
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-
 		if err := EnsureGitignore(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error ensuring .gitignore: %v\n", err)
 			os.Exit(1)
 		}
 
 		PruneStaging()
-
-		dirs := SelectDirs(args)
-
-		if len(dirs) == 0 {
-			fmt.Println("No directories to stage.")
-			return
-		}
-
-		staging := StagingDir()
-		if err := os.MkdirAll(staging, 0755); err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating staging directory %s: %v\n", staging, err)
-			os.Exit(1)
-		}
-
-		for _, entry := range dirs {
-			dest := filepath.Join(staging, entry.Alias)
-			fmt.Printf("Staging '%s' (%s) -> %s\n", entry.Alias, entry.TargetPath, dest)
-
-			rsyncArgs := []string{"-av", "--delete"}
-			if !AppConf.ConfigSchema.RespectGitignore {
-				rsyncArgs = append(rsyncArgs, "--exclude=.gitignore")
-			}
-			rsyncArgs = append(rsyncArgs, entry.TargetPath+"/", dest)
-
-			cmd := exec.Command("rsync", rsyncArgs...)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
-				fmt.Fprintf(os.Stderr, "Error rsyncing '%s': %v\n", entry.Alias, err)
-				os.Exit(1)
-			}
-		}
-
-		fmt.Println("Staging complete.")
+		runStage(args, "-av")
 	},
 }
 
@@ -193,101 +126,155 @@ Examples:
 		}
 
 		noPush, _ := cmd.Flags().GetBool("no-push")
-
-		if err := EnsureGitignore(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error ensuring .gitignore: %v\n", err)
-			os.Exit(1)
-		}
-
-		PruneStaging()
-
-		staging := StagingDir()
-		stagingInfo, err := os.Stat(staging)
-		if err != nil || !stagingInfo.IsDir() {
-			fmt.Fprintf(os.Stderr, "Error: staging directory not found at %s.\nRun 'mns stage' first.\n", staging)
-			os.Exit(1)
-		}
-
-		entries, err := os.ReadDir(staging)
-		if err != nil || len(entries) == 0 {
-			fmt.Fprintf(os.Stderr, "Error: staging directory is empty.\nRun 'mns stage' first.\n")
-			os.Exit(1)
-		}
-
-		timestamp := time.Now().Format("20060102-150405")
-		archiver := AppConf.ConfigSchema.Archiver
-		var archivePath string
-		var archiveName string
-
-		switch archiver {
-		case "zip":
-			archiveName = fmt.Sprintf("mnemosync-backup-%s.zip", timestamp)
-			archivePath = filepath.Join(RepoPath(), archiveName)
-			if err := CreateZipArchive(staging, archivePath); err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating zip archive: %v\n", err)
-				os.Exit(1)
-			}
-		default:
-			archiveName = fmt.Sprintf("mnemosync-backup-%s.tar.gz", timestamp)
-			archivePath = filepath.Join(RepoPath(), archiveName)
-			if err := CreateTarArchive(staging, archivePath); err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating tar archive: %v\n", err)
-				os.Exit(1)
-			}
-		}
-
-		archiveInfo, _ := os.Stat(archivePath)
-		fmt.Printf("Created archive: %s (%d bytes)\n", archiveName, archiveInfo.Size())
-
-		PruneOldArchives(archiver)
-
-		if err := EnsureLfsTracking(archivePath); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: could not configure Git LFS: %v\n", err)
-		}
-
-		fmt.Println("Running git add -A...")
-		if err := RunGit("add", "-A"); err != nil {
-			os.Exit(1)
-		}
-
-		commitMsg := time.Now().Format(AppConf.ConfigSchema.CommitFmt)
-		fmt.Printf("Committing: %s\n", commitMsg)
-		if err := RunGit("commit", "-m", commitMsg); err != nil {
-			os.Exit(1)
-		}
-
-		if !noPush {
-			fmt.Println("Pushing to remote...")
-			if err := RunGit("push"); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: git push failed\n")
-			} else {
-				fmt.Println("Push complete.")
-			}
-		} else {
-			fmt.Println("Skipping push (--no-push flag set).")
-		}
-
-		aliases := make([]string, 0, len(entries))
-		for _, e := range entries {
-			if e.IsDir() {
-				aliases = append(aliases, e.Name())
-			}
-		}
-
-		dbPath := fileio.ResolveDbPath()
-		DataStore.AddHistory(config.StagingHistoryEntry{
-			Timestamp: time.Now().Format(time.RFC3339),
-			Archive:   archiveName,
-			SizeBytes: archiveInfo.Size(),
-			Dirs:      aliases,
-		})
-		if err := DataStore.SaveData(dbPath); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to save staging history: %v\n", err)
-		}
-
-		CleanupStaging(staging)
-		fmt.Println("Push complete. Staging directory cleaned.")
+		runPush(noPush)
 	},
+}
+
+func runStage(args []string, rsyncFlags ...string) {
+	dirs := SelectDirs(args)
+
+	if len(dirs) == 0 {
+		fmt.Println("No directories to stage.")
+		return
+	}
+
+	staging := StagingDir()
+	if err := os.MkdirAll(staging, 0755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating staging directory %s: %v\n", staging, err)
+		os.Exit(1)
+	}
+
+	for _, entry := range dirs {
+		rsyncEntry(entry, staging, rsyncFlags...)
+	}
+
+	fmt.Println("Staging complete.")
+}
+
+func rsyncEntry(entry config.DirData, staging string, rsyncFlags ...string) {
+	dest := filepath.Join(staging, entry.Alias)
+	fmt.Printf("Staging '%s' (%s) -> %s\n", entry.Alias, entry.TargetPath, dest)
+
+	args := BuildRsyncArgs(entry, staging, rsyncFlags...)
+	cmd := exec.Command("rsync", args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error rsyncing '%s': %v\n", entry.Alias, err)
+		os.Exit(1)
+	}
+}
+
+func BuildRsyncArgs(entry config.DirData, staging string, rsyncFlags ...string) []string {
+	dest := filepath.Join(staging, entry.Alias)
+	args := append([]string{}, rsyncFlags...)
+	args = append(args, "--delete")
+	if !AppConf.ConfigSchema.RespectGitignore {
+		args = append(args, "--exclude=.gitignore")
+	}
+	args = append(args, entry.TargetPath+"/", dest)
+	return args
+}
+
+func runPush(noPush bool) {
+	if err := EnsureGitignore(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error ensuring .gitignore: %v\n", err)
+		os.Exit(1)
+	}
+
+	PruneStaging()
+
+	staging := StagingDir()
+	stagingInfo, err := os.Stat(staging)
+	if err != nil || !stagingInfo.IsDir() {
+		fmt.Fprintf(os.Stderr, "Error: staging directory not found at %s.\nRun 'mns stage' first.\n", staging)
+		os.Exit(1)
+	}
+
+	entries, err := os.ReadDir(staging)
+	if err != nil || len(entries) == 0 {
+		fmt.Fprintf(os.Stderr, "Error: staging directory is empty.\nRun 'mns stage' first.\n")
+		os.Exit(1)
+	}
+
+	archivePath, archiveName, archiveSize := CreateArchive(staging, AppConf.ConfigSchema.Archiver)
+	fmt.Printf("Created archive: %s (%d bytes)\n", archiveName, archiveSize)
+
+	PruneOldArchives(AppConf.ConfigSchema.Archiver)
+
+	if err := EnsureLfsTracking(archivePath); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: could not configure Git LFS: %v\n", err)
+	}
+
+	fmt.Println("Running git add -A...")
+	if err := RunGit("add", "-A"); err != nil {
+		os.Exit(1)
+	}
+
+	commitMsg := time.Now().Format(AppConf.ConfigSchema.CommitFmt)
+	fmt.Printf("Committing: %s\n", commitMsg)
+	if err := RunGit("commit", "-m", commitMsg); err != nil {
+		os.Exit(1)
+	}
+
+	if !noPush {
+		fmt.Println("Pushing to remote...")
+		if err := RunGit("push"); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: git push failed\n")
+		} else {
+			fmt.Println("Push complete.")
+		}
+	} else {
+		fmt.Println("Skipping push (--no-push flag set).")
+	}
+
+	RecordPushHistory(entries, archiveName, archiveSize)
+	CleanupStaging(staging)
+	fmt.Println("Push complete. Staging directory cleaned.")
+}
+
+func CreateArchive(staging, archiver string) (archivePath, archiveName string, size int64) {
+	timestamp := time.Now().Format("20060102-150405")
+
+	switch archiver {
+	case "zip":
+		archiveName = fmt.Sprintf("mnemosync-backup-%s.zip", timestamp)
+		archivePath = filepath.Join(RepoPath(), archiveName)
+		if err := CreateZipArchive(staging, archivePath); err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating zip archive: %v\n", err)
+			os.Exit(1)
+		}
+	default:
+		archiveName = fmt.Sprintf("mnemosync-backup-%s.tar.gz", timestamp)
+		archivePath = filepath.Join(RepoPath(), archiveName)
+		if err := CreateTarArchive(staging, archivePath); err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating tar archive: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	info, _ := os.Stat(archivePath)
+	return archivePath, archiveName, info.Size()
+}
+
+func RecordPushHistory(entries []os.DirEntry, archiveName string, archiveSize int64) {
+	aliases := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			aliases = append(aliases, e.Name())
+		}
+	}
+
+	dbPath := fileio.ResolveDbPath()
+	DataStore.AddHistory(config.StagingHistoryEntry{
+		Timestamp: time.Now().Format(time.RFC3339),
+		Archive:   archiveName,
+		SizeBytes: archiveSize,
+		Dirs:      aliases,
+	})
+	if err := DataStore.SaveData(dbPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to save staging history: %v\n", err)
+	}
 }
 
 func CreateTarArchive(srcDir, dstPath string) error {

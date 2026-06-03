@@ -2,4 +2,6 @@ mmsync
 mns
 dist
 coverage.out
-.aider*
+.claude
+.mcp.json
+.repowise

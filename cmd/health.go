@@ -23,123 +23,138 @@ Also checks if the mnemosync configuration files have been created.`,
 }
 
 func RunHealthCheck(cfg *config.MnemoConf, shouldPrintOutput bool) string {
-	var statusBuilder strings.Builder
+	var status strings.Builder
 
-	configPath := cfg.ConfigSchema.ConfigPath
-	repoPath := cfg.ConfigSchema.RepoPath
-	dbPath := cfg.ConfigSchema.DbPath
+	printOutput(shouldPrintOutput, "", "-- Health Check --", "")
 
-	if shouldPrintOutput {
-		header := "-- Health Check --"
-		fmt.Printf("\n%s\n\n", header)
+	status.WriteString(checkDeps(shouldPrintOutput))
+	status.WriteString(checkConfigPath(cfg.ConfigSchema.ConfigPath, shouldPrintOutput))
+	status.WriteString(checkRepoPath(cfg.ConfigSchema.RepoPath, shouldPrintOutput))
+	status.WriteString(checkDbPath(cfg.ConfigSchema.DbPath, shouldPrintOutput))
+
+	printOutput(shouldPrintOutput, "", "-- Health Check Complete --")
+
+	return status.String()
+}
+
+func printOutput(shouldPrintOutput bool, lines ...string) {
+	if !shouldPrintOutput {
+		return
 	}
-
-	deps := []struct {
-		name       string
-		isOptional bool
-	}{
-		{"git", false},
-		{"rsync", false},
-		{"tar", false},
-		{"zip", true},
-		{"git-lfs", true},
+	for _, l := range lines {
+		fmt.Println(l)
 	}
+}
 
-	if shouldPrintOutput {
-		fmt.Println("Binaries:")
-	}
+var deps = []struct {
+	name       string
+	isOptional bool
+}{
+	{"git", false},
+	{"rsync", false},
+	{"tar", false},
+	{"zip", true},
+	{"git-lfs", true},
+}
+
+func checkDeps(shouldPrintOutput bool) string {
+	var status strings.Builder
+
+	printOutput(shouldPrintOutput, "Binaries:")
+
 	for _, dep := range deps {
 		msg := CheckBinary(dep.name, dep.isOptional, shouldPrintOutput)
 		if msg != "" {
-			statusBuilder.WriteString(msg)
-			statusBuilder.WriteString("\n")
+			status.WriteString(msg)
+			status.WriteString("\n")
 		}
 	}
 
-	if shouldPrintOutput {
-		fmt.Println()
-		fmt.Println("Configuration:")
-	}
+	return status.String()
+}
+
+func checkConfigPath(configPath string, shouldPrintOutput bool) string {
+	printOutput(shouldPrintOutput, "", "Configuration:")
+
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		msg := fmt.Sprintf("  [!!] %s (not found - run 'mns init')", configPath)
-		statusBuilder.WriteString(msg)
-		statusBuilder.WriteString("\n")
 		if shouldPrintOutput {
 			fmt.Println(msg)
 		}
-	} else if shouldPrintOutput {
+		return msg + "\n"
+	}
+
+	if shouldPrintOutput {
 		fmt.Printf("  [OK] %s\n", configPath)
 	}
+	return ""
+}
 
-	if shouldPrintOutput {
-		fmt.Println()
-		fmt.Println("Repository:")
-	}
+func checkRepoPath(repoPath string, shouldPrintOutput bool) string {
+	printOutput(shouldPrintOutput, "", "Repository:")
+
 	if repoPath == "" {
 		msg := "  [!!] repo path not set (run 'mns init')"
-		statusBuilder.WriteString(msg)
-		statusBuilder.WriteString("\n")
 		if shouldPrintOutput {
 			fmt.Println(msg)
 		}
-	} else {
-		if _, err := os.Stat(repoPath); os.IsNotExist(err) {
-			msg := fmt.Sprintf("  [!!] %s (path not found)", repoPath)
-			statusBuilder.WriteString(msg)
-			statusBuilder.WriteString("\n")
-			if shouldPrintOutput {
-				fmt.Println(msg)
-			}
-		} else {
-			gitDirExists, err := healthcheck.GitDirExists(repoPath)
-			if err != nil {
-				msg := fmt.Sprintf("  [..] %s (git check failed: %v)", repoPath, err)
-				statusBuilder.WriteString(msg)
-				statusBuilder.WriteString("\n")
-				if shouldPrintOutput {
-					fmt.Println(msg)
-				}
-			} else if !gitDirExists {
-				msg := fmt.Sprintf("  [..] %s (not a git repository)", repoPath)
-				statusBuilder.WriteString(msg)
-				statusBuilder.WriteString("\n")
-				if shouldPrintOutput {
-					fmt.Println(msg)
-				}
-			} else if shouldPrintOutput {
-				fmt.Printf("  [OK] %s\n", repoPath)
-			}
+		return msg + "\n"
+	}
+
+	if _, err := os.Stat(repoPath); os.IsNotExist(err) {
+		msg := fmt.Sprintf("  [!!] %s (path not found)", repoPath)
+		if shouldPrintOutput {
+			fmt.Println(msg)
 		}
+		return msg + "\n"
+	}
+
+	gitDirExists, err := healthcheck.GitDirExists(repoPath)
+	if err != nil {
+		msg := fmt.Sprintf("  [..] %s (git check failed: %v)", repoPath, err)
+		if shouldPrintOutput {
+			fmt.Println(msg)
+		}
+		return msg + "\n"
+	}
+
+	if !gitDirExists {
+		msg := fmt.Sprintf("  [..] %s (not a git repository)", repoPath)
+		if shouldPrintOutput {
+			fmt.Println(msg)
+		}
+		return msg + "\n"
 	}
 
 	if shouldPrintOutput {
-		fmt.Println()
-		fmt.Println("Database:")
+		fmt.Printf("  [OK] %s\n", repoPath)
 	}
+	return ""
+}
+
+func checkDbPath(dbPath string, shouldPrintOutput bool) string {
+	printOutput(shouldPrintOutput, "", "Database:")
+
 	if dbPath == "" {
 		msg := "  [!!] db path not set (run 'mns init')"
-		statusBuilder.WriteString(msg)
-		statusBuilder.WriteString("\n")
 		if shouldPrintOutput {
 			fmt.Println(msg)
 		}
-	} else if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return msg + "\n"
+	}
+
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
 		msg := fmt.Sprintf("  [..] %s (not found on disk — first backup will create it)", dbPath)
-		statusBuilder.WriteString(msg)
-		statusBuilder.WriteString("\n")
 		if shouldPrintOutput {
 			fmt.Println(msg)
 		}
-	} else if shouldPrintOutput {
-		fmt.Printf("  [OK] %s\n", dbPath)
+		return msg + "\n"
 	}
 
 	if shouldPrintOutput {
-		fmt.Println()
-		fmt.Println("-- Health Check Complete --")
+		fmt.Printf("  [OK] %s\n", dbPath)
 	}
-
-	return statusBuilder.String()
+	return ""
 }
 
 func CheckBinary(binaryName string, isOptional bool, shouldPrintOutput bool) string {
