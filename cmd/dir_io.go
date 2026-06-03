@@ -70,39 +70,61 @@ func addWrapper(args []string) {
 	}
 }
 
-func ResolveAndValidatePath(path string) (string, error) {
-	if strings.HasPrefix(path, "~/") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("failed to get home directory for tilde expansion: %w", err)
+func resolveTilde(path string) (string, error) {
+	if !strings.HasPrefix(path, "~/") {
+		return path, nil
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory for tilde expansion: %w", err)
+	}
+	return filepath.Join(homeDir, path[2:]), nil
+}
+
+func validateDirectoryPath(targetPath string) error {
+	info, err := os.Stat(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("path '%s' does not exist", targetPath)
 		}
-		path = filepath.Join(homeDir, path[2:])
+		return fmt.Errorf("error checking path '%s': %w", targetPath, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("path '%s' is a file, only directories can be added", targetPath)
+	}
+	return nil
+}
+
+func checkPathSemantics(targetPath string) error {
+	if targetPath == AppConf.ConfigSchema.RepoPath {
+		return fmt.Errorf("cannot circular reference repo path: '%s'", targetPath)
+	}
+	if filepath.Dir(targetPath) == filepath.Dir(AppConf.ConfigSchema.ConfigPath) {
+		return fmt.Errorf("cannot circular reference config path: '%s'", targetPath)
+	}
+	if filepath.Base(targetPath) == "mnemosync" {
+		return fmt.Errorf("do not use the dev repo: '%s'", targetPath)
+	}
+	return nil
+}
+
+func ResolveAndValidatePath(path string) (string, error) {
+	resolved, err := resolveTilde(path)
+	if err != nil {
+		return "", err
 	}
 
-	targetPath, err := filepath.Abs(path)
+	targetPath, err := filepath.Abs(resolved)
 	if err != nil {
 		return "", fmt.Errorf("invalid path provided: %w", err)
 	}
 
-	info, err := os.Stat(targetPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("path '%s' does not exist", targetPath)
-		}
-		return "", fmt.Errorf("error checking path '%s': %w", targetPath, err)
+	if err := validateDirectoryPath(targetPath); err != nil {
+		return "", err
 	}
 
-	if !info.IsDir() {
-		return "", fmt.Errorf("path '%s' is a file, only directories can be added", targetPath)
-	}
-	if targetPath == AppConf.ConfigSchema.RepoPath {
-		return "", fmt.Errorf("cannot circular reference repo path: '%s'", targetPath)
-	}
-	if filepath.Dir(targetPath) == filepath.Dir(AppConf.ConfigSchema.ConfigPath) {
-		return "", fmt.Errorf("cannot circular reference config path: '%s'", targetPath)
-	}
-	if filepath.Base(targetPath) == "mnemosync" {
-		return "", fmt.Errorf("do not use the dev repo: '%s'", targetPath)
+	if err := checkPathSemantics(targetPath); err != nil {
+		return "", err
 	}
 
 	return targetPath, nil

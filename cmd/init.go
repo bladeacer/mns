@@ -151,38 +151,46 @@ func PathCompleter(line string) []string {
 	return buildPathSuggestions(entries, dir, prefix, homeDir, homePrefix)
 }
 
-func ProcessRepoPath(inputPath string) (string, error) {
-	if strings.HasPrefix(inputPath, "~") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("failed to get home directory: %w", err)
-		}
-
-		if inputPath == "~" {
-			inputPath = homeDir
-		} else if strings.HasPrefix(inputPath, "~"+string(os.PathSeparator)) {
-			relativePath := inputPath[2:]
-			inputPath = filepath.Join(homeDir, relativePath)
-		}
+func resolveTildePrefix(inputPath string) (string, error) {
+	if !strings.HasPrefix(inputPath, "~") {
+		return inputPath, nil
 	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get home directory: %w", err)
+	}
+	if inputPath == "~" {
+		return homeDir, nil
+	}
+	if strings.HasPrefix(inputPath, "~"+string(os.PathSeparator)) {
+		return filepath.Join(homeDir, inputPath[2:]), nil
+	}
+	return inputPath, nil
+}
 
+func resolveAndValidateDir(inputPath string) (string, error) {
 	absPath, err := filepath.Abs(inputPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve absolute path for '%s': %w", inputPath, err)
 	}
-
 	info, err := os.Stat(absPath)
 	if os.IsNotExist(err) {
 		return "", fmt.Errorf("directory '%s' does not exist", absPath)
 	} else if err != nil {
 		return "", fmt.Errorf("error checking path '%s': %w", absPath, err)
 	}
-
 	if !info.IsDir() {
 		return "", fmt.Errorf("'%s' is not a directory", absPath)
 	}
-
 	return absPath, nil
+}
+
+func ProcessRepoPath(inputPath string) (string, error) {
+	resolved, err := resolveTildePrefix(inputPath)
+	if err != nil {
+		return "", err
+	}
+	return resolveAndValidateDir(resolved)
 }
 
 func getRepoPathInteractive() (string, error) {

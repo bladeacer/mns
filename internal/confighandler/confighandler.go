@@ -1,6 +1,7 @@
 package confighandler
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -168,110 +169,160 @@ type healRule struct {
 	heal  func(loaded *config.ConfigSchema, defaultVal config.ConfigSchema)
 }
 
-func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf) (bool, []error) {
+func checkEmptyField(val string, name, def string) (string, bool) {
+	if val != "" {
+		return "", false
+	}
+	return fmt.Sprintf("invalid or empty field '%s': Cannot be empty when initialized. Overridden with default: '%s'", name, def), true
+}
+
+func checkNonNegative(val int, name string, def int) (string, bool) {
+	if val >= 0 {
+		return "", false
+	}
+	return fmt.Sprintf("invalid %s: %d. Reset to default: %d", name, val, def), true
+}
+
+func checkNonNegative64(val int64, name string, def int64) (string, bool) {
+	if val >= 0 {
+		return "", false
+	}
+	return fmt.Sprintf("invalid %s: %d. Reset to default: %d", name, val, def), true
+}
+
+func healStringField(field *string, def string) {
+	*field = def
+}
+
+func healIntField(field *int, def int) {
+	*field = def
+}
+
+func healInt64Field(field *int64, def int64) {
+	*field = def
+}
+
+func repoPathRule(l config.ConfigSchema, d config.ConfigSchema) (string, bool) {
+	return checkEmptyField(l.RepoPath, "RepoPath", d.RepoPath)
+}
+
+func healRepoPath(l *config.ConfigSchema, d config.ConfigSchema) {
+	healStringField(&l.RepoPath, d.RepoPath)
+}
+
+func dbPathCheck(l config.ConfigSchema, d config.ConfigSchema) (string, bool) {
+	if l.DbPath == "" {
+		return fmt.Sprintf("invalid or empty field 'DbPath': Cannot be empty when initialized. Overridden with default: '%s'", d.DbPath), true
+	}
+	if l.DbPath != d.DbPath {
+		return fmt.Sprintf("invalid or empty field 'DbPath': Migrating to expected database path. Overridden with default: '%s'", d.DbPath), true
+	}
+	return "", false
+}
+
+func healDbPath(l *config.ConfigSchema, d config.ConfigSchema) {
+	healStringField(&l.DbPath, d.DbPath)
+}
+
+func archiverRule(l config.ConfigSchema, d config.ConfigSchema) (string, bool) {
+	return checkEmptyField(l.Archiver, "Archiver", d.Archiver)
+}
+
+func healArchiver(l *config.ConfigSchema, d config.ConfigSchema) {
+	healStringField(&l.Archiver, d.Archiver)
+}
+
+func commitFmtRule(l config.ConfigSchema, d config.ConfigSchema) (string, bool) {
+	return checkEmptyField(l.CommitFmt, "CommitFmt", d.CommitFmt)
+}
+
+func healCommitFmt(l *config.ConfigSchema, d config.ConfigSchema) {
+	healStringField(&l.CommitFmt, d.CommitFmt)
+}
+
+func histLimitDaysRule(l config.ConfigSchema, d config.ConfigSchema) (string, bool) {
+	return checkNonNegative(l.HistLimitDays, "HistLimitDays", d.HistLimitDays)
+}
+
+func healHistLimitDays(l *config.ConfigSchema, d config.ConfigSchema) {
+	healIntField(&l.HistLimitDays, d.HistLimitDays)
+}
+
+func histLimitSizeMbRule(l config.ConfigSchema, d config.ConfigSchema) (string, bool) {
+	return checkNonNegative64(l.HistLimitSizeMb, "HistLimitSizeMb", d.HistLimitSizeMb)
+}
+
+func healHistLimitSizeMb(l *config.ConfigSchema, d config.ConfigSchema) {
+	healInt64Field(&l.HistLimitSizeMb, d.HistLimitSizeMb)
+}
+
+func keepArchivesRule(l config.ConfigSchema, d config.ConfigSchema) (string, bool) {
+	return checkNonNegative(l.KeepArchives, "KeepArchives", d.KeepArchives)
+}
+
+func healKeepArchives(l *config.ConfigSchema, d config.ConfigSchema) {
+	healIntField(&l.KeepArchives, d.KeepArchives)
+}
+
+func lfsThresholdRule(l config.ConfigSchema, d config.ConfigSchema) (string, bool) {
+	return checkNonNegative64(l.LfsThresholdMb, "LfsThresholdMb", d.LfsThresholdMb)
+}
+
+func healLfsThreshold(l *config.ConfigSchema, d config.ConfigSchema) {
+	healInt64Field(&l.LfsThresholdMb, d.LfsThresholdMb)
+}
+
+func applyHealRules(loaded *config.ConfigSchema, default_ config.ConfigSchema) (bool, []error) {
 	warnings := make([]error, 0)
 	healed := false
 
+	type healEntry struct {
+		check func(l config.ConfigSchema, d config.ConfigSchema) (string, bool)
+		heal  func(l *config.ConfigSchema, d config.ConfigSchema)
+	}
+
+	rules := []healEntry{
+		{check: repoPathRule, heal: healRepoPath},
+		{check: dbPathCheck, heal: healDbPath},
+		{check: archiverRule, heal: healArchiver},
+		{check: commitFmtRule, heal: healCommitFmt},
+		{check: histLimitDaysRule, heal: healHistLimitDays},
+		{check: histLimitSizeMbRule, heal: healHistLimitSizeMb},
+		{check: keepArchivesRule, heal: healKeepArchives},
+		{check: lfsThresholdRule, heal: healLfsThreshold},
+	}
+
+	for _, rule := range rules {
+		if msg, needsHeal := rule.check(*loaded, default_); needsHeal {
+			rule.heal(loaded, default_)
+			healed = true
+			warnings = append(warnings, errors.New(msg))
+		}
+	}
+
+	return healed, warnings
+}
+
+func checkRepoPathExists(loaded config.ConfigSchema) []error {
+	if loaded.RepoPath == "" {
+		return nil
+	}
+	if _, err := os.Stat(loaded.RepoPath); os.IsNotExist(err) {
+		return []error{fmt.Errorf("RepoPath path does not exist on disk: %s", loaded.RepoPath)}
+	}
+	return nil
+}
+
+func healConfigSchema(loadedCfg *config.MnemoConf, defaultCfg *config.MnemoConf) (bool, []error) {
 	loaded := &loadedCfg.ConfigSchema
 	default_ := defaultCfg.ConfigSchema
 
 	if !loaded.IsInit {
-		warnings = append(warnings, fmt.Errorf("configuration is not initialized; run 'mns init' first"))
-		return healed, warnings
+		return false, []error{fmt.Errorf("configuration is not initialized; run 'mns init' first")}
 	}
 
-	rules := []healRule{
-		{
-			check: func(l config.ConfigSchema) (string, bool) {
-				if l.RepoPath == "" {
-					return fmt.Sprintf("invalid or empty field 'RepoPath': Cannot be empty when initialized. Overridden with default: '%s'", default_.RepoPath), true
-				}
-				return "", false
-			},
-			heal: func(l *config.ConfigSchema, d config.ConfigSchema) { l.RepoPath = d.RepoPath },
-		},
-		{
-			check: func(l config.ConfigSchema) (string, bool) {
-				if l.DbPath == "" {
-					return fmt.Sprintf("invalid or empty field 'DbPath': Cannot be empty when initialized. Overridden with default: '%s'", default_.DbPath), true
-				}
-				if l.DbPath != default_.DbPath {
-					return fmt.Sprintf("invalid or empty field 'DbPath': Migrating to expected database path. Overridden with default: '%s'", default_.DbPath), true
-				}
-				return "", false
-			},
-			heal: func(l *config.ConfigSchema, d config.ConfigSchema) { l.DbPath = d.DbPath },
-		},
-		{
-			check: func(l config.ConfigSchema) (string, bool) {
-				if l.Archiver == "" {
-					return fmt.Sprintf("invalid or empty field 'Archiver': Empty or invalid. Overridden with default: '%s'", default_.Archiver), true
-				}
-				return "", false
-			},
-			heal: func(l *config.ConfigSchema, d config.ConfigSchema) { l.Archiver = d.Archiver },
-		},
-		{
-			check: func(l config.ConfigSchema) (string, bool) {
-				if l.CommitFmt == "" {
-					return fmt.Sprintf("invalid or empty field 'CommitFmt': Empty or invalid. Overridden with default: '%s'", default_.CommitFmt), true
-				}
-				return "", false
-			},
-			heal: func(l *config.ConfigSchema, d config.ConfigSchema) { l.CommitFmt = d.CommitFmt },
-		},
-		{
-			check: func(l config.ConfigSchema) (string, bool) {
-				if l.HistLimitDays < 0 {
-					return fmt.Sprintf("invalid HistLimitDays: %d. Reset to default: %d", l.HistLimitDays, default_.HistLimitDays), true
-				}
-				return "", false
-			},
-			heal: func(l *config.ConfigSchema, d config.ConfigSchema) { l.HistLimitDays = d.HistLimitDays },
-		},
-		{
-			check: func(l config.ConfigSchema) (string, bool) {
-				if l.HistLimitSizeMb < 0 {
-					return fmt.Sprintf("invalid HistLimitSizeMb: %d. Reset to default: %d", l.HistLimitSizeMb, default_.HistLimitSizeMb), true
-				}
-				return "", false
-			},
-			heal: func(l *config.ConfigSchema, d config.ConfigSchema) { l.HistLimitSizeMb = d.HistLimitSizeMb },
-		},
-		{
-			check: func(l config.ConfigSchema) (string, bool) {
-				if l.KeepArchives < 0 {
-					return fmt.Sprintf("invalid KeepArchives: %d. Reset to default: %d", l.KeepArchives, default_.KeepArchives), true
-				}
-				return "", false
-			},
-			heal: func(l *config.ConfigSchema, d config.ConfigSchema) { l.KeepArchives = d.KeepArchives },
-		},
-		{
-			check: func(l config.ConfigSchema) (string, bool) {
-				if l.LfsThresholdMb < 0 {
-					return fmt.Sprintf("invalid LfsThresholdMb: %d. Reset to default: %d", l.LfsThresholdMb, default_.LfsThresholdMb), true
-				}
-				return "", false
-			},
-			heal: func(l *config.ConfigSchema, d config.ConfigSchema) { l.LfsThresholdMb = d.LfsThresholdMb },
-		},
-	}
-
-	for _, rule := range rules {
-		if msg, needsHeal := rule.check(*loaded); needsHeal {
-			rule.heal(loaded, default_)
-			healed = true
-			warnings = append(warnings, fmt.Errorf(msg))
-		}
-	}
-
-	if loaded.RepoPath != "" {
-		if _, err := os.Stat(loaded.RepoPath); os.IsNotExist(err) {
-			warnings = append(warnings, fmt.Errorf("RepoPath path does not exist on disk: %s", loaded.RepoPath))
-		}
-	}
-
+	healed, warnings := applyHealRules(loaded, default_)
+	warnings = append(warnings, checkRepoPathExists(*loaded)...)
 	return healed, warnings
 }
 

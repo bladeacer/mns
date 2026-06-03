@@ -4,7 +4,7 @@ import (
 	"github.com/bladeacer/mns/internal/fileio"
 )
 
-var AppVersion = "0.6.1"
+var AppVersion = "0.7.0"
 
 type ConfigSchema struct {
 	ConfigPath       string `yaml:"config_path"`
