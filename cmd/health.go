@@ -157,28 +157,28 @@ func checkDbPath(dbPath string, shouldPrintOutput bool) string {
 	return ""
 }
 
+func printIf(should bool, msg string) {
+	if should {
+		fmt.Println(msg)
+	}
+}
+
 func CheckBinary(binaryName string, isOptional bool, shouldPrintOutput bool) string {
 	result := healthcheck.CheckBinary(binaryName)
 
 	if !result.Found {
 		if !isOptional {
 			msg := fmt.Sprintf("  [!!] %s (required - not found in PATH)", binaryName)
-			if shouldPrintOutput {
-				fmt.Println(msg)
-			}
+			printIf(shouldPrintOutput, msg)
 			return msg
 		}
 		msg := fmt.Sprintf("  [..] %s (optional - not found in PATH)", binaryName)
-		if shouldPrintOutput {
-			fmt.Println(msg)
-		}
+		printIf(shouldPrintOutput, msg)
 		return msg
 	}
 
 	msg := fmt.Sprintf("  [OK] %s at %s", binaryName, result.Path)
-	if shouldPrintOutput {
-		fmt.Println(msg)
-	}
+	printIf(shouldPrintOutput, msg)
 
 	if result.Error != nil {
 		var warnMsg string
@@ -187,17 +187,12 @@ func CheckBinary(binaryName string, isOptional bool, shouldPrintOutput bool) str
 		} else {
 			warnMsg = fmt.Sprintf("      [..] version check: %v", result.Error)
 		}
-		if shouldPrintOutput {
-			fmt.Println(warnMsg)
-		}
+		printIf(shouldPrintOutput, warnMsg)
 		return msg + "\n" + warnMsg
 	}
 
 	if result.Version != "" {
-		verMsg := fmt.Sprintf("      %s", result.Version)
-		if shouldPrintOutput {
-			fmt.Println(verMsg)
-		}
+		printIf(shouldPrintOutput, fmt.Sprintf("      %s", result.Version))
 	}
 
 	return ""

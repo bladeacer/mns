@@ -398,6 +398,30 @@ func PruneOldArchives(archiver string) {
 	}
 }
 
+func lfsArchivePattern(ext string) string {
+	if ext == ".zip" {
+		return "mnemosync-backup-*.zip"
+	}
+	return "mnemosync-backup-*.tar.gz"
+}
+
+func gitAttributesHasPattern(repoPath, pattern string) (bool, error) {
+	attrPath := filepath.Join(repoPath, ".gitattributes")
+	content, err := os.ReadFile(attrPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return false, fmt.Errorf("reading .gitattributes: %w", err)
+		}
+		return false, nil
+	}
+	for _, line := range strings.Split(string(content), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), pattern) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func EnsureLfsTracking(archivePath string) error {
 	threshold := AppConf.ConfigSchema.LfsThresholdMb
 	if threshold <= 0 {
@@ -419,29 +443,15 @@ func EnsureLfsTracking(archivePath string) error {
 		return nil
 	}
 
-	ext := filepath.Ext(archivePath)
-	var pattern string
-	if ext == ".zip" {
-		pattern = "mnemosync-backup-*.zip"
-	} else {
-		pattern = "mnemosync-backup-*.tar.gz"
-	}
-
+	pattern := lfsArchivePattern(filepath.Ext(archivePath))
 	fmt.Printf("Archive exceeds %d MB threshold, configuring Git LFS for '%s'...\n", threshold, pattern)
 
-	attrPath := filepath.Join(RepoPath(), ".gitattributes")
-	content, err := os.ReadFile(attrPath)
+	exists, err := gitAttributesHasPattern(RepoPath(), pattern)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return fmt.Errorf("reading .gitattributes: %w", err)
-		}
-		content = []byte{}
+		return err
 	}
-
-	for _, line := range strings.Split(string(content), "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), pattern) {
-			return nil
-		}
+	if exists {
+		return nil
 	}
 
 	cmd := exec.Command(lfsPath, "track", pattern)

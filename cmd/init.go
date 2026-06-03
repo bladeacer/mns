@@ -96,62 +96,59 @@ func CompleteInitSetup(repoPath, configPath, dbPath string, dbExists bool, cfg *
 	}
 }
 
+func expandTilde(line string) (string, string, bool) {
+	if !strings.HasPrefix(line, "~") {
+		return line, "", false
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return line, "", false
+	}
+	if line == "~" {
+		return homeDir + string(os.PathSeparator), homeDir, true
+	}
+	if strings.HasPrefix(line, "~"+string(os.PathSeparator)) {
+		return filepath.Join(homeDir, line[2:]), homeDir, true
+	}
+	return line, homeDir, true
+}
+
+func buildPathSuggestions(entries []os.DirEntry, dir, prefix, homeDir string, homePrefix bool) []string {
+	var suggestions []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasPrefix(prefix, ".") && strings.HasPrefix(name, ".") {
+			continue
+		}
+		if !strings.HasPrefix(name, prefix) {
+			continue
+		}
+		suggestion := filepath.Join(dir, name)
+		if homePrefix && strings.HasPrefix(suggestion, homeDir) {
+			suggestion = "~" + suggestion[len(homeDir):]
+		}
+		if entry.IsDir() && suggestion[len(suggestion)-1] != os.PathSeparator {
+			suggestion += string(os.PathSeparator)
+		}
+		suggestions = append(suggestions, suggestion)
+	}
+	return suggestions
+}
+
 func PathCompleter(line string) []string {
-	var homeDir string
-	var err error
-	homePrefix := strings.HasPrefix(line, "~")
+	expanded, homeDir, homePrefix := expandTilde(line)
 
-	if homePrefix {
-		homeDir, err = os.UserHomeDir()
-		if err != nil {
-			return nil
-		}
-
-		if line == "~" {
-			line = homeDir + string(os.PathSeparator)
-		} else if strings.HasPrefix(line, "~"+string(os.PathSeparator)) {
-			line = filepath.Join(homeDir, line[2:])
-		}
+	dir, prefix := filepath.Split(expanded)
+	if dir == "" {
+		dir = "."
 	}
 
-	dir, prefix := filepath.Split(line)
-
-	targetDir := dir
-	if targetDir == "" {
-		targetDir = "."
-	}
-
-	entries, err := os.ReadDir(targetDir)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
 
-	var suggestions []string
-	for _, entry := range entries {
-		name := entry.Name()
-
-		if !strings.HasPrefix(prefix, ".") && strings.HasPrefix(name, ".") {
-			continue
-		}
-
-		if strings.HasPrefix(name, prefix) {
-
-			suggestion := filepath.Join(dir, name)
-
-			if homePrefix && strings.HasPrefix(suggestion, homeDir) {
-				suggestion = "~" + suggestion[len(homeDir):]
-			}
-
-			if entry.IsDir() {
-				if suggestion[len(suggestion)-1] != os.PathSeparator {
-					suggestion += string(os.PathSeparator)
-				}
-			}
-			suggestions = append(suggestions, suggestion)
-		}
-	}
-
-	return suggestions
+	return buildPathSuggestions(entries, dir, prefix, homeDir, homePrefix)
 }
 
 func ProcessRepoPath(inputPath string) (string, error) {

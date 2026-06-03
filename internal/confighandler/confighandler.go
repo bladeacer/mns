@@ -50,51 +50,33 @@ func LoadConfigWithPath(configPath string) (*config.MnemoConf, error) {
 		return nil, fmt.Errorf("error unmarshalling YAML data. File may be invalid: %w", err)
 	}
 
-	versionUpdated := false
-	if tempCfg.ConfigSchema.AppVersion != defaultCfg.ConfigSchema.AppVersion {
-		old := tempCfg.ConfigSchema.AppVersion
-		tempCfg.ConfigSchema.AppVersion = defaultCfg.ConfigSchema.AppVersion
-		fmt.Fprintf(os.Stderr, "Config Warning: AppVersion updated from '%s' to '%s'\n", old, defaultCfg.ConfigSchema.AppVersion)
-		versionUpdated = true
-	}
-
+	versionUpdated := updateAppVersion(tempCfg, defaultCfg)
 	oldDbPath := tempCfg.ConfigSchema.DbPath
 	healed, warnings := healConfigSchema(tempCfg, defaultCfg)
 
 	if healed && len(warnings) > 0 {
-		fmt.Fprintf(os.Stderr, "Configuration Healing Performed \n")
-		for _, w := range warnings {
-			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
-		}
-
+		printWarnings("Configuration Healing Performed", warnings)
 		if err := migrateDbFile(oldDbPath, tempCfg.ConfigSchema.DbPath); err != nil {
 			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", err)
 		}
-
-		fmt.Fprintf(os.Stderr, "Saving Repaired Configuration \n\n")
-
-		if saveErr := yamlwrapper.MergeAndSaveConfig(tempCfg, configPath, data); saveErr != nil {
-			return nil, fmt.Errorf("critical error: failed to save repaired configuration: %w", saveErr)
+		if err := saveConfig(tempCfg, configPath, data, "Saving Repaired Configuration"); err != nil {
+			return nil, fmt.Errorf("critical error: failed to save repaired configuration: %w", err)
 		}
 		return tempCfg, nil
 	}
 
-	for _, w := range warnings {
-		fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
-	}
+	printWarnings("", warnings)
 
 	if needsSchemaUpdate(data) {
-		fmt.Fprintf(os.Stderr, "Updating configuration file with new schema fields\n")
-		if saveErr := yamlwrapper.MergeAndSaveConfig(tempCfg, configPath, data); saveErr != nil {
-			return nil, fmt.Errorf("critical error: failed to save updated configuration: %w", saveErr)
+		if err := saveConfig(tempCfg, configPath, data, "Updating configuration file with new schema fields"); err != nil {
+			return nil, fmt.Errorf("critical error: failed to save updated configuration: %w", err)
 		}
 		return tempCfg, nil
 	}
 
 	if versionUpdated {
-		fmt.Fprintf(os.Stderr, "Updating configuration file with current version\n\n")
-		if saveErr := yamlwrapper.MergeAndSaveConfig(tempCfg, configPath, data); saveErr != nil {
-			return nil, fmt.Errorf("critical error: failed to save updated configuration: %w", saveErr)
+		if err := saveConfig(tempCfg, configPath, data, "Updating configuration file with current version"); err != nil {
+			return nil, fmt.Errorf("critical error: failed to save updated configuration: %w", err)
 		}
 	}
 
@@ -117,24 +99,15 @@ func HealAndSaveConfig(configPath string) (*config.MnemoConf, error) {
 		return nil, fmt.Errorf("error unmarshalling YAML data: %w", err)
 	}
 
-	if tempCfg.ConfigSchema.AppVersion != defaultCfg.ConfigSchema.AppVersion {
-		old := tempCfg.ConfigSchema.AppVersion
-		tempCfg.ConfigSchema.AppVersion = defaultCfg.ConfigSchema.AppVersion
-		fmt.Fprintf(os.Stderr, "Config Warning: AppVersion updated from '%s' to '%s'\n", old, defaultCfg.ConfigSchema.AppVersion)
-	}
+	updateAppVersion(tempCfg, defaultCfg)
 
 	oldDbPath := tempCfg.ConfigSchema.DbPath
 	healed, warnings := healConfigSchema(tempCfg, defaultCfg)
 
 	if healed && len(warnings) > 0 {
-		fmt.Fprintf(os.Stderr, "Configuration Healing Performed\n")
-		for _, w := range warnings {
-			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
-		}
+		printWarnings("Configuration Healing Performed", warnings)
 	} else {
-		for _, w := range warnings {
-			fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
-		}
+		printWarnings("", warnings)
 	}
 
 	if err := migrateDbFile(oldDbPath, tempCfg.ConfigSchema.DbPath); err != nil {
@@ -147,6 +120,30 @@ func HealAndSaveConfig(configPath string) (*config.MnemoConf, error) {
 	}
 
 	return tempCfg, nil
+}
+
+func updateAppVersion(loaded, defaultCfg *config.MnemoConf) bool {
+	if loaded.ConfigSchema.AppVersion == defaultCfg.ConfigSchema.AppVersion {
+		return false
+	}
+	old := loaded.ConfigSchema.AppVersion
+	loaded.ConfigSchema.AppVersion = defaultCfg.ConfigSchema.AppVersion
+	fmt.Fprintf(os.Stderr, "Config Warning: AppVersion updated from '%s' to '%s'\n", old, defaultCfg.ConfigSchema.AppVersion)
+	return true
+}
+
+func printWarnings(header string, warnings []error) {
+	if header != "" {
+		fmt.Fprintf(os.Stderr, "%s \n", header)
+	}
+	for _, w := range warnings {
+		fmt.Fprintf(os.Stderr, "Config Warning: %v\n", w)
+	}
+}
+
+func saveConfig(cfg *config.MnemoConf, configPath string, data []byte, message string) error {
+	fmt.Fprintf(os.Stderr, "%s\n\n", message)
+	return yamlwrapper.MergeAndSaveConfig(cfg, configPath, data)
 }
 
 func needsSchemaUpdate(data []byte) bool {

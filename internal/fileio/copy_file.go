@@ -39,39 +39,46 @@ func CopyFile(src, dst string) error {
 
 // Copies configuration and database files when new MMSYNC_CONF set
 func MigrateConfigData(newConfigPath string) error {
-	oldConfigDir := LegacyConfigDirPath()
-	oldConfigFile := filepath.Join(oldConfigDir, DefaultConfigFile)
-	oldDbFile := filepath.Join(oldConfigDir, DefaultDbFile)
-
-	newConfigDir := filepath.Dir(newConfigPath)
-	newDbFile := filepath.Join(newConfigDir, DefaultDbFile)
-
-	if os.Getenv("MMSYNC_CONF") != "" && oldConfigDir != newConfigDir {
-
-		if _, err := os.Stat(oldConfigFile); os.IsNotExist(err) {
-			return nil
-		} else if err != nil {
-			return fmt.Errorf("error checking old configuration file %s: %w", oldConfigFile, err)
-		}
-
-		if _, err := os.Stat(newConfigPath); err == nil {
-			return fmt.Errorf("cannot migrate: new configuration file already exists at %s", newConfigPath)
-		}
-
-		fmt.Fprintf(os.Stderr, "Migrating configuration files from %s to %s...\n", oldConfigDir, newConfigDir)
-
-		if err := CopyFile(oldConfigFile, newConfigPath); err != nil {
-			return fmt.Errorf("failed to copy configuration file: %w", err)
-		}
-
-		if _, err := os.Stat(oldDbFile); err == nil {
-			if err := CopyFile(oldDbFile, newDbFile); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: Failed to copy database file: %v\n", err)
-			}
-		}
-
-		fmt.Fprintf(os.Stderr, "Configuration migration complete.\n")
+	if os.Getenv("MMSYNC_CONF") == "" {
+		return nil
 	}
 
+	oldConfigDir := LegacyConfigDirPath()
+	newConfigDir := filepath.Dir(newConfigPath)
+
+	if oldConfigDir == newConfigDir {
+		return nil
+	}
+
+	oldConfigFile := filepath.Join(oldConfigDir, DefaultConfigFile)
+
+	if _, err := os.Stat(oldConfigFile); os.IsNotExist(err) {
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("error checking old configuration file %s: %w", oldConfigFile, err)
+	}
+
+	if _, err := os.Stat(newConfigPath); err == nil {
+		return fmt.Errorf("cannot migrate: new configuration file already exists at %s", newConfigPath)
+	}
+
+	fmt.Fprintf(os.Stderr, "Migrating configuration files from %s to %s...\n", oldConfigDir, newConfigDir)
+
+	if err := CopyFile(oldConfigFile, newConfigPath); err != nil {
+		return fmt.Errorf("failed to copy configuration file: %w", err)
+	}
+
+	migrateDbFile(filepath.Join(oldConfigDir, DefaultDbFile), filepath.Join(newConfigDir, DefaultDbFile))
+
+	fmt.Fprintf(os.Stderr, "Configuration migration complete.\n")
 	return nil
+}
+
+func migrateDbFile(oldDbFile, newDbFile string) {
+	if _, err := os.Stat(oldDbFile); os.IsNotExist(err) {
+		return
+	}
+	if err := CopyFile(oldDbFile, newDbFile); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to copy database file: %v\n", err)
+	}
 }
