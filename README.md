@@ -22,7 +22,7 @@ These tools must be installed and available in your `$PATH`:
 
 ## Installation
 
-### Via Go (development)
+### Via Go
 
 ```bash
 go install github.com/bladeacer/mns@latest
