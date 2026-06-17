@@ -15,10 +15,10 @@ The name is inspired by the Greek Goddess of memory Mnemosyne.
 
 These tools must be installed and available in your `$PATH`:
 
-- **[git](https://git-scm.com/downloads)** — version control
-- **[rsync](https://rsync.samba.org/download.html)** — staging mirroring (pre-installed on macOS and most Linux distros; on Windows use [MSYS2](https://www.msys2.org/)
-- **[tar](https://www.gnu.org/software/tar/)** or **[zip](https://infozip.sourceforge.net/)** — at least one archiver (pre-installed on macOS and Linux; on Windows use [MSYS2](https://www.msys2.org/))
-- **[Git LFS](https://git-lfs.com/)** — optional, auto-configured for archives exceeding `lfs_threshold_mb` (invoked via `git lfs`)
+- **[git](https://git-scm.com/downloads)** - version control
+- **[rsync](https://rsync.samba.org/download.html)** - staging mirroring (pre-installed on macOS and most Linux distros; on Windows use [MSYS2](https://www.msys2.org/)
+- **[tar](https://www.gnu.org/software/tar/)** or **[zip](https://infozip.sourceforge.net/)** - at least one archiver (pre-installed on macOS and Linux; on Windows use [MSYS2](https://www.msys2.org/))
+- **[Git LFS](https://git-lfs.com/)** - optional, auto-configured for archives exceeding `lfs_threshold_mb` (invoked via `git lfs`)
 
 ## Installation
 
@@ -43,7 +43,7 @@ Pre-built binaries are available for:
 | Windows | `amd64` (x86-64), `arm64` (ARM 64-bit) |
 
 All binaries are fully static (compiled with `CGO_ENABLED=0`) with no
-C runtime dependencies — the Linux archive works on both native Linux
+C runtime dependencies - the Linux archive works on both native Linux
 and WSL without extra setup.
 
 **Always backup your files before using mns**.
@@ -122,7 +122,7 @@ mns push                         # archive staging dir, commit, push
 ```
 
 - Staging files are stored under `<repo>/.mnemosync/staging/` which is automatically
-  gitignored — individual files are never tracked.
+  gitignored - individual files are never tracked.
 - On `push`, the staging directory is archived with `tar` (default) or `zip`,
   the archive is committed, and the remote is pushed.
 - Only the 5 most recent archives are kept in the repo (configurable via
@@ -142,7 +142,7 @@ conventions (via `os.UserConfigDir()`):
 | macOS | `~/Library/Application Support/mmsync/` | `~/Library/Application Support/mmsync/` |
 | Windows | `%AppData%\mmsync\` | `%AppData%\mmsync\` |
 
-Setting `$MMSYNC_CONF` to a directory overrides both paths — config and
+Setting `$MMSYNC_CONF` to a directory overrides both paths - config and
 database are placed together under that directory.
 
 On Linux, the config and database live in separate XDG directories
@@ -197,7 +197,6 @@ License version 3 (GPLv3) License.
 
 ### License Notice
 
-```
 This file is part of mnemosync. mnemosync is a CLI tool that lets you add
 folders to backup manually to a target Git repository.
 
@@ -213,7 +212,6 @@ PURPOSE. See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with mnemosync.
 If not, see <https://www.gnu.org/licenses/>.
-```
 
 ### License file
 
@@ -223,10 +221,10 @@ You can find the [license file here](./LICENSE).
 
 This CLI was made possible by:
 
-- [Cobra CLI](https://github.com/spf13/cobra) — CLI framework
-- [peterh/liner](https://github.com/peterh/liner) — interactive prompt with tab-completion
-- [muesli/mango-cobra](https://github.com/muesli/mango-cobra) + [muesli/roff](https://github.com/muesli/roff) — man page generation
-- [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) — YAML marshalling
-- [golangci-lint](https://golangci-lint.run) — linting
-- [GoReleaser](https://goreleaser.com) — release automation
-- [go-test-coverage](https://github.com/vladopajic/go-test-coverage) — coverage badge
+- [Cobra CLI](https://github.com/spf13/cobra) - CLI framework
+- [peterh/liner](https://github.com/peterh/liner) - interactive prompt with tab-completion
+- [muesli/mango-cobra](https://github.com/muesli/mango-cobra) + [muesli/roff](https://github.com/muesli/roff) - man page generation
+- [gopkg.in/yaml.v3](https://gopkg.in/yaml.v3) - YAML marshalling
+- [golangci-lint](https://golangci-lint.run) - linting
+- [GoReleaser](https://goreleaser.com) - release automation
+- [go-test-coverage](https://github.com/vladopajic/go-test-coverage) - coverage badge
