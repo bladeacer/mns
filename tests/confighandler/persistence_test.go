@@ -22,7 +22,7 @@ func captureStderr(t *testing.T, fn func()) string {
 	}
 	os.Stderr = w
 	fn()
-	w.Close()
+	_ = w.Close()
 	os.Stderr = realStderr
 	var buf bytes.Buffer
 	_, _ = buf.ReadFrom(r)
@@ -362,7 +362,7 @@ func TestHealAndSaveConfig_AlwaysSaves(t *testing.T) {
 		}
 
 		statAfter, _ := os.Stat(configPath)
-		if statBefore.ModTime() == statAfter.ModTime() {
+		if statBefore.ModTime().Equal(statAfter.ModTime()) {
 			t.Error("expected HealAndSaveConfig to modify file on disk")
 		}
 	})

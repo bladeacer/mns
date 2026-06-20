@@ -4,7 +4,7 @@ LDFLAGS  := -s -w -X github.com/bladeacer/mns/config.AppVersion=$(VERSION)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build test lint gowatch snapshot tag
+.PHONY: help build test lint gowatch snapshot tag fmt
 
 help: ## Show this help
 	@printf "\nUsage: make <target>\n\n"
@@ -24,6 +24,9 @@ cover: ## Run tests with code coverage (alias for test)
 
 lint: ## Run golangci-lint
 	golangci-lint run ./...
+
+fmt: ## Formats source code
+	rg --files --type go | xargs gofmt -w -s
 
 gowatch: ## Start gowatch for hot-reload development
 	gowatch

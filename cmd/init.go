@@ -55,7 +55,7 @@ func ValidateInitPreconditions(configPath, dbPath string) (dbExists bool, err er
 	_, dbErr := os.Stat(dbPath)
 
 	if confErr == nil {
-		return false, fmt.Errorf("Cannot run init. Configuration file already exists at %s\nPlease remove the existing configuration file before running 'init'.", configPath)
+		return false, fmt.Errorf("cannot run init: configuration file already exists at %s", configPath)
 	} else if !os.IsNotExist(confErr) {
 		fmt.Fprintf(os.Stderr, "Error checking for config file at %s: %v\n", configPath, confErr)
 	}

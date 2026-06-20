@@ -164,10 +164,10 @@ func needsSchemaUpdate(data []byte) bool {
 	return false
 }
 
-type healRule struct {
-	check func(loaded config.ConfigSchema) (string, bool)
-	heal  func(loaded *config.ConfigSchema, defaultVal config.ConfigSchema)
-}
+// type healRule struct {
+// 	check func(loaded config.ConfigSchema) (string, bool)
+// 	heal  func(loaded *config.ConfigSchema, defaultVal config.ConfigSchema)
+// }
 
 func checkEmptyField(val string, name, def string) (string, bool) {
 	if val != "" {

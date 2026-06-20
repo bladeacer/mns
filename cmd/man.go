@@ -32,7 +32,7 @@ func generateManPage() (string, error) {
 		return "", err
 	}
 
-	manPage = manPage.WithSection("Copyright", "(C) 2025 bladeacer.\n" +
+	manPage = manPage.WithSection("Copyright", "(C) 2025 bladeacer.\n"+
 		"Released under GPLv3 license.")
 
 	return manPage.Build(roff.NewDocument()), nil
