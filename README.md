@@ -1,7 +1,6 @@
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/bladeacer/mns?style=for-the-badge&logo=go)
 ![GitHub License](https://img.shields.io/github/license/bladeacer/mns?style=for-the-badge)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/bladeacer/mns)](https://goreportcard.com/report/github.com/bladeacer/mns)
 ![Coverage](coverage.svg)
 
 # mns

@@ -26,7 +26,7 @@ lint: ## Run golangci-lint
 	golangci-lint run ./...
 
 fmt: ## Formats source code
-	rg --files --type go | xargs gofmt -w -s
+	rg --no-ignore --files --type go | xargs gofmt -w -s
 
 gowatch: ## Start gowatch for hot-reload development
 	gowatch
