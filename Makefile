@@ -4,7 +4,7 @@ LDFLAGS  := -s -w -X github.com/bladeacer/mns/config.AppVersion=$(VERSION)
 
 .DEFAULT_GOAL := help
 
-.PHONY: help build test lint gowatch snapshot tag fmt
+.PHONY: help build test lint gowatch snapshot tag fmt cover cover-html
 
 help: ## Show this help
 	@printf "\nUsage: make <target>\n\n"
@@ -21,6 +21,10 @@ test: ## Run all tests with coverage and badge
 
 cover: ## Run tests with code coverage (alias for test)
 	$(MAKE) test
+
+cover-html: ## Runs tests with code coverage, renders browser tab for inspection
+	$(MAKE) cover
+	go tool cover -html=coverage.out
 
 lint: ## Run golangci-lint
 	golangci-lint run ./...

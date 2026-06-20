@@ -268,6 +268,163 @@ func TestCheckBinary_WithVersionError(t *testing.T) {
 	}
 }
 
+func TestGetSortedTrackedDirectories_SortingAndData(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+
+	// Add mock directories out of numerical order to verify sorting rules
+	// (Sorted primarily by length of ID, then alphanumerically: "1", "2", "10")
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/b", Alias: "beta"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/a", Alias: "alpha"})
+	defer resetGlobals()
+
+	entries := cmd.GetSortedTrackedDirectories()
+
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 listed entries, got %d", len(entries))
+	}
+	if entries[0].ID != "1" || entries[1].ID != "2" {
+		t.Errorf("entries out of expected ID order: values received: %s, %s", entries[0].ID, entries[1].ID)
+	}
+}
+
+// --- REMOVE CMD LOGIC TESTS ---
+
+func TestRemoveTrackedDirectory_Success(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/remove-me", Alias: "toremove"})
+	defer resetGlobals()
+
+	err := cmd.RemoveTrackedDirectory("1")
+	if err != nil {
+		t.Fatalf("unexpected error during direct functional removal: %v", err)
+	}
+
+	_, _, found := cmd.ResolveEntry("1")
+	if found {
+		t.Error("expected entry '1' to be removed from the datastore map context")
+	}
+}
+
+func TestRemoveTrackedDirectory_NotFound(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	defer resetGlobals()
+
+	err := cmd.RemoveTrackedDirectory("missing-alias")
+	if err == nil {
+		t.Fatal("expected error when attempting to remove nonexistent target, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "no tracked directory matches") {
+		t.Errorf("unexpected error string layout: %v", err)
+	}
+}
+
+// --- CLEAR CMD LOGIC TESTS ---
+
+func TestClearAllTrackedDirectories(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/one", Alias: "one"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/two", Alias: "two"})
+	defer resetGlobals()
+
+	err := cmd.ClearAllTrackedDirectories()
+	if err != nil {
+		t.Fatalf("unexpected database clear error: %v", err)
+	}
+
+	entries := cmd.GetSortedTrackedDirectories()
+	if len(entries) != 0 {
+		t.Errorf("expected datastore map to be completely empty, found %d items remaining", len(entries))
+	}
+}
+
+// --- SEARCH CMD LOGIC TESTS ---
+
+func TestSearchTrackedDirectories_FilterMatches(t *testing.T) {
+	dir := t.TempDir()
+	setTestGlobals(dir)
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/home/user/workspace", Alias: "work"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/var/log/nginx", Alias: "logs"})
+	defer resetGlobals()
+
+	// 1. Match by alias substring
+	res := cmd.SearchTrackedDirectories("wo")
+	if len(res) != 1 || res[0].Alias != "work" {
+		t.Errorf("failed searching by alias query substring. Results: %+v", res)
+	}
+
+	// 2. Match by target path substring (case-insensitive checking)
+	res = cmd.SearchTrackedDirectories("LOG")
+	if len(res) != 1 || res[0].Alias != "logs" {
+		t.Errorf("failed searching by path case-insensitive substring. Results: %+v", res)
+	}
+
+	// 3. Match absolutely nothing
+	res = cmd.SearchTrackedDirectories("nonexistent-query-string")
+	if len(res) != 0 {
+		t.Errorf("expected empty search slice array, instead collected: %d elements", len(res))
+	}
+}
+
+// --- CHANGE CMD LOGIC TESTS ---
+
+func TestChangeTrackedDirectory_UpdateFields(t *testing.T) {
+	configDir := t.TempDir()
+	workingDir := t.TempDir() // Isolated target directory path tree to bypass circular reference rules
+
+	newTarget := filepath.Join(workingDir, "new-target")
+	if err := os.Mkdir(newTarget, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	setTestGlobals(configDir)
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: "/tmp/old", Alias: "oldalias"})
+	defer resetGlobals()
+
+	err := cmd.ChangeTrackedDirectory("1", newTarget, "newalias")
+	if err != nil {
+		t.Fatalf("unexpected validation/update error: %v", err)
+	}
+
+	_, entry, found := cmd.ResolveEntry("1")
+	if !found {
+		t.Fatal("expected modified configuration tracking layout item to exist")
+	}
+	if entry.Alias != "newalias" {
+		t.Errorf("expected alias updated to 'newalias', got: %q", entry.Alias)
+	}
+	if entry.TargetPath != newTarget {
+		t.Errorf("expected path updated to %q, got: %q", newTarget, entry.TargetPath)
+	}
+}
+
+func TestChangeTrackedDirectory_DuplicateAlias(t *testing.T) {
+	dir := t.TempDir()
+	path1 := filepath.Join(dir, "first")
+	path2 := filepath.Join(dir, "second")
+	_ = os.Mkdir(path1, 0755)
+	_ = os.Mkdir(path2, 0755)
+
+	setTestGlobals(dir)
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: path1, Alias: "taken-alias"})
+	cmd.GetDataStore().AddDir(config.DirData{TargetPath: path2, Alias: "other-alias"})
+	defer resetGlobals()
+
+	// Attempt to reassign entry ID '2' to use the alias already taken by item '1'
+	err := cmd.ChangeTrackedDirectory("2", "", "taken-alias")
+	if err == nil {
+		t.Fatal("expected unique alias constraint conflict validation failure, got nil error")
+	}
+
+	if !strings.Contains(err.Error(), "already in use") {
+		t.Errorf("unexpected collision error returned from function boundary: %v", err)
+	}
+}
+
 func TestResolveAndValidatePath_Absolute(t *testing.T) {
 	dir := t.TempDir()
 	subdir := filepath.Join(dir, "target")
